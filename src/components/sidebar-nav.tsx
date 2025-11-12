@@ -17,15 +17,15 @@ import type { User } from "@/lib/types";
 
 const userNavItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { href: "/dashboard/files", icon: History, label: "Mi Historial" },
+  { href: "/files", icon: History, label: "Mi Historial" },
 ];
 
 const adminNavItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { href: "/dashboard/admin/files", icon: FileText, label: "Revisión de Actas" },
-  { href: "/dashboard/admin/users", icon: Users, label: "Gestión de Usuarios" },
-  { href: "/dashboard/admin/history", icon: History, label: "Historial Global" },
-  { href: "/dashboard/admin/settings", icon: Settings, label: "Administración" },
+  { href: "/admin/files", icon: FileText, label: "Revisión de Actas" },
+  { href: "/admin/users", icon: Users, label: "Gestión de Usuarios" },
+  { href: "/admin/history", icon: History, label: "Historial Global" },
+  { href: "/admin/settings", icon: Settings, label: "Administración" },
 ];
 
 type SidebarNavProps = {

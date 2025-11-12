@@ -11,7 +11,9 @@ export default function MainLayout({
 }>) {
   // In a real app, you'd get the user from session.
   // For now, we'll use the first user which is an admin.
-  const currentUser = users[0]; 
+  const currentUser = users.find(u => u.rol === 'admin'); 
+  if (!currentUser) return null;
+
 
   return (
     <SidebarProvider>
