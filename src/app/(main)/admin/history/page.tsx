@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Bar, BarChart, CartesianGrid, XAxis, Pie, PieChart, Cell } from "recharts";
 import { uploads, users, getUserById } from "@/lib/data";
-import { Upload, FileText } from "lucide-react";
+import { Upload, FileText, Users } from "lucide-react";
 import { useMemo } from "react";
 import type { Upload as UploadType, User as UserType } from "@/lib/types";
 
