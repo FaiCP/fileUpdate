@@ -34,6 +34,10 @@ export function FileReviewDialog({ isOpen, setIsOpen, upload }: FileReviewDialog
     });
     setIsOpen(false);
   };
+  
+  // In a real app, the file path would be a secure URL from a storage service.
+  // We'll use a placeholder service that can show different files based on a seed.
+  const filePreviewUrl = `https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf`;
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -47,7 +51,7 @@ export function FileReviewDialog({ isOpen, setIsOpen, upload }: FileReviewDialog
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 flex-1 min-h-0">
             <div className="md:col-span-2 flex flex-col">
                 <div className="border rounded-lg flex-1">
-                     <iframe src="https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf" className="w-full h-full" title="File Preview"></iframe>
+                     <iframe src={filePreviewUrl} className="w-full h-full" title={upload.original_name}></iframe>
                 </div>
             </div>
             <div className="space-y-4 flex flex-col">
