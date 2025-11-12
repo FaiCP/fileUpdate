@@ -1,14 +1,15 @@
 "use client";
 
-import { MoreHorizontal, PlusCircle, Search, Users } from "lucide-react";
+import { MoreHorizontal, PlusCircle, Search, Users, UserCog } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -98,6 +99,15 @@ export default function AdminUsersPage() {
                         <DropdownMenuItem className="text-destructive">
                           {user.activo ? "Desactivar" : "Activar"}
                         </DropdownMenuItem>
+                         {user.rol !== 'admin' && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem>
+                              <UserCog className="mr-2 h-4 w-4" />
+                              Hacer Administrador
+                            </DropdownMenuItem>
+                          </>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

@@ -25,7 +25,6 @@ const adminNavItems = [
   { href: "/admin/files", icon: FileText, label: "Revisión de Actas" },
   { href: "/admin/users", icon: Users, label: "Gestión de Usuarios" },
   { href: "/admin/history", icon: History, label: "Historial Global" },
-  { href: "/admin/settings", icon: Settings, label: "Administración" },
 ];
 
 type SidebarNavProps = {
