@@ -9,8 +9,9 @@ export default function MainLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // In a real app, you'd get the user from session
-  const currentUser = users[0]; // Mocking admin user
+  // In a real app, you'd get the user from session.
+  // For now, we'll use the first user which is an admin.
+  const currentUser = users[0]; 
 
   return (
     <SidebarProvider>

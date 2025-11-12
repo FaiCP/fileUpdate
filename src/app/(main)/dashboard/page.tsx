@@ -1,33 +1,31 @@
 "use client";
 
 import * as React from "react";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { DashboardAdmin } from "@/components/dashboard-admin";
 import { DashboardUser } from "@/components/dashboard-user";
 import { PageHeader } from "@/components/page-header";
+import { users } from "@/lib/data"; // In a real app, you'd get this from a session/context
 
 export default function DashboardPage() {
-  const [showAdminView, setShowAdminView] = React.useState(true);
+  // In a real app, you would get the current user from a session or context.
+  // We'll simulate this by finding the logged-in user (for now, we'll assume it's the admin).
+  const currentUser = users.find(u => u.rol === 'admin'); // Simulating admin login
+
+  if (!currentUser) {
+    // Handle case where user is not found, maybe redirect to login
+    return <div>Usuario no encontrado.</div>;
+  }
+  
+  const isAdmin = currentUser.rol === 'admin';
 
   return (
     <div className="container mx-auto px-0">
       <PageHeader
         title="Dashboard"
-        description={showAdminView ? "Vista general para administradores." : "Resumen de tu actividad."}
-      >
-        <div className="flex items-center space-x-2">
-          <Switch
-            id="role-switch"
-            checked={showAdminView}
-            onCheckedChange={setShowAdminView}
-            aria-label="Toggle admin view"
-          />
-          <Label htmlFor="role-switch">Vista de Administrador</Label>
-        </div>
-      </PageHeader>
+        description={isAdmin ? "Vista general para administradores." : "Resumen de tu actividad."}
+      />
 
-      {showAdminView ? <DashboardAdmin /> : <DashboardUser />}
+      {isAdmin ? <DashboardAdmin /> : <DashboardUser />}
     </div>
   );
 }
