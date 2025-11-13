@@ -10,8 +10,8 @@ export default function MainLayout({
   children: React.ReactNode;
 }>) {
   // In a real app, you'd get the user from session.
-  // For now, we'll use the first user which is an admin.
-  const currentUser = users.find(u => u.rol === 'admin'); 
+  // We'll simulate a user login by finding a user with rol 'user'.
+  const currentUser = users.find(u => u.rol === 'user'); 
   if (!currentUser) return null;
 
 

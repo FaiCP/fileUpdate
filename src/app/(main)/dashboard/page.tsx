@@ -8,8 +8,8 @@ import { users } from "@/lib/data"; // In a real app, you'd get this from a sess
 
 export default function DashboardPage() {
   // In a real app, you would get the current user from a session or context.
-  // We'll simulate this by finding the logged-in user (for now, we'll assume it's the admin).
-  const currentUser = users.find(u => u.rol === 'admin'); // Simulating admin login
+  // We'll simulate this by finding a logged-in user.
+  const currentUser = users.find(u => u.rol === 'user'); // Simulating user login
 
   if (!currentUser) {
     // Handle case where user is not found, maybe redirect to login
