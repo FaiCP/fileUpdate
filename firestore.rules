@@ -1,0 +1,106 @@
+/**
+ * @description This ruleset enforces a strict user-ownership model for user profiles and uploads, with admin access for audit logs.
+ * @dataStructure
+ *   - /users/{userId}: Stores user profiles, accessible only to the user and admins.
+ *   - /users/{userId}/uploads/{uploadId}: Stores user-uploaded files, accessible only to the owning user.
+ *   - /audit_logs/{auditLogId}: Stores audit logs, accessible only to admins.
+ *   - /roles_admin/{userId}: Used to grant admin privileges. Existence of a document indicates admin access.
+ * @keySecurityDecisions
+ *   - User listing is disallowed to protect privacy.
+ *   - Audit logs are only accessible to admins.
+ *   - Admin status is determined by the presence of a document in `/roles_admin/{userId}`.
+ * @denormalizationForAuthorization
+ *   - Admin status is checked using `exists()` on the `/roles_admin/{userId}` document, avoiding the need to read user documents.
+ * @structuralSegregation
+ *   - Audit logs are stored in a separate top-level collection to allow for admin-only access without affecting user data.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * @description Enforces user-ownership and admin access for user profiles.
+     * @path /users/{userId}
+     * @allow (create) - User with matching UID can create their profile.
+     * @allow (get, update, delete) - User with matching UID can access/modify their profile. Admins can also access/modify.
+     * @deny (list) - Listing users is not allowed.
+     * @deny (create, update, delete) - Non-owners and non-admins cannot modify user profiles.
+     * @principle Enforces document ownership and admin override for user data.
+     */
+    match /users/{userId} {
+      // Function to check if the requesting user is the owner of the document.
+      function isOwner(userId) {
+        return request.auth != null && request.auth.uid == userId;
+      }
+
+      // Function to check if the requesting user is an admin.
+      function isAdmin() {
+        return exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+      }
+
+      // Allow a user to create their own profile if the UID matches.
+      allow create: if isOwner(userId) && request.resource.data.id == request.auth.uid;
+
+      // Allow the user to get, update, and delete their own profile, or if they are an admin.
+      allow get, update, delete: if isOwner(userId) || isAdmin();
+
+      // Prevent listing of all users.
+      allow list: if false;
+    }
+
+    /**
+     * @description Enforces user-ownership for uploaded files.
+     * @path /users/{userId}/uploads/{uploadId}
+     * @allow (create) - User with matching UID can create uploads under their profile.
+     * @allow (get, list, update, delete) - User with matching UID can access/modify their uploads.
+     * @deny (create, get, list, update, delete) - Non-owners cannot access uploads.
+     * @principle Enforces path-based ownership for user-uploaded files.
+     */
+    match /users/{userId}/uploads/{uploadId} {
+      // Function to check if the requesting user is the owner of the parent user document.
+      function isOwner(userId) {
+        return request.auth != null && request.auth.uid == userId;
+      }
+
+      // Allow creating an upload if the user is the owner of the parent user document.
+      allow create: if isOwner(userId);
+
+      // Allow getting, listing, updating, and deleting an upload if the user is the owner of the parent user document.
+      allow get, list, update, delete: if isOwner(userId);
+    }
+
+    /**
+     * @description Restricts access to audit logs to administrators only.
+     * @path /audit_logs/{auditLogId}
+     * @allow (get, list, create, update, delete) - Only admins can access/modify audit logs.
+     * @deny (get, list, create, update, delete) - Non-admins cannot access audit logs.
+     * @principle Restricts access to sensitive audit log data to authorized personnel.
+     */
+    match /audit_logs/{auditLogId} {
+      // Function to check if the requesting user is an admin.
+      function isAdmin() {
+        return exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+      }
+
+      // Only allow admins to read, write, and list audit logs.
+      allow get, list, create, update, delete: if isAdmin();
+    }
+
+     /**
+     * @description Controls access to the roles_admin collection, allowing only admins to create/delete entries to grant/revoke admin privileges.
+     * @path /roles_admin/{userId}
+     * @allow (create, delete) - Only admins can create/delete admin role assignments.
+     * @deny (get, list, update) - Regular users cannot read or modify admin role assignments.
+     * @principle Restricts the management of admin roles to existing administrators.
+     */
+    match /roles_admin/{userId} {
+        // Function to check if the requesting user is an admin.
+      function isAdmin() {
+        return exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+      }
+
+      allow create, delete: if isAdmin();
+      allow get, list, update: if false;
+    }
+  }
+}

@@ -1,0 +1,266 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user within the Secure File Hub system.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user entity."
+        },
+        "firstName": {
+          "type": "string",
+          "description": "The first name of the user."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "The last name of the user."
+        },
+        "identification": {
+          "type": "string",
+          "description": "The user's unique identification number."
+        },
+        "department": {
+          "type": "string",
+          "description": "The department to which the user belongs."
+        },
+        "email": {
+          "type": "string",
+          "description": "The email address of the user.",
+          "format": "email"
+        },
+        "role": {
+          "type": "string",
+          "description": "The role of the user (e.g., 'user', 'admin')."
+        },
+        "isActive": {
+          "type": "boolean",
+          "description": "Indicates whether the user account is active."
+        },
+        "dateJoined": {
+          "type": "string",
+          "description": "The date when the user joined the system.",
+          "format": "date-time"
+        },
+        "dateLeft": {
+          "type": "string",
+          "description": "The date when the user left the system (nullable).",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "firstName",
+        "lastName",
+        "identification",
+        "email",
+        "role",
+        "isActive",
+        "dateJoined"
+      ]
+    },
+    "Upload": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Upload",
+      "type": "object",
+      "description": "Represents a file uploaded by a user.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the upload entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Upload)"
+        },
+        "filename": {
+          "type": "string",
+          "description": "The name of the file stored on the system."
+        },
+        "originalName": {
+          "type": "string",
+          "description": "The original name of the uploaded file."
+        },
+        "mimeType": {
+          "type": "string",
+          "description": "The MIME type of the uploaded file."
+        },
+        "sizeBytes": {
+          "type": "number",
+          "description": "The size of the uploaded file in bytes."
+        },
+        "fileType": {
+          "type": "string",
+          "description": "The type of file (e.g., pdf, word, excel)."
+        },
+        "usage": {
+          "type": "string",
+          "description": "The intended usage of the file (e.g., acta, contract)."
+        },
+        "description": {
+          "type": "string",
+          "description": "A description of the uploaded file."
+        },
+        "uploadDate": {
+          "type": "string",
+          "description": "The date and time when the file was uploaded.",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "description": "The status of the upload (e.g., PENDING, APPROVED)."
+        },
+        "nasPath": {
+          "type": "string",
+          "description": "The path to the file stored on the NAS."
+        },
+        "reviewedBy": {
+          "type": "string",
+          "description": "Reference to User who reviewed. (Relationship: User 1:N UploadReview)",
+          "format": "uuid"
+        },
+        "reviewDate": {
+          "type": "string",
+          "description": "The date and time when the file was reviewed.",
+          "format": "date-time"
+        },
+        "comments": {
+          "type": "string",
+          "description": "Comments or observations made during the review process."
+        },
+        "acceptanceActPath": {
+          "type": "string",
+          "description": "The path to the generated acceptance act PDF file."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "filename",
+        "originalName",
+        "fileType",
+        "usage",
+        "uploadDate",
+        "status",
+        "nasPath"
+      ]
+    },
+    "AuditLog": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AuditLog",
+      "type": "object",
+      "description": "Represents a log entry for an action performed within the system.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the audit log entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N AuditLog)"
+        },
+        "action": {
+          "type": "string",
+          "description": "The action performed (e.g., 'upload', 'approve')."
+        },
+        "details": {
+          "type": "string",
+          "description": "Detailed information about the action, stored as JSON."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "The date and time when the action was performed.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "action",
+        "details",
+        "createdAt"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles. Accessible only to the user and administrators.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/uploads/{uploadId}",
+        "definition": {
+          "entityName": "Upload",
+          "schema": {
+            "$ref": "#/backend/entities/Upload"
+          },
+          "description": "Stores files uploaded by users. Enforces path-based ownership for security.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "uploadId",
+              "description": "The unique identifier of the upload."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/audit_logs/{auditLogId}",
+        "definition": {
+          "entityName": "AuditLog",
+          "schema": {
+            "$ref": "#/backend/entities/AuditLog"
+          },
+          "description": "Stores audit logs for actions performed in the system. Accessible to administrators.",
+          "params": [
+            {
+              "name": "auditLogId",
+              "description": "The unique identifier of the audit log."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/roles_admin/{userId}",
+        "definition": {
+          "entityName": "roles_admin",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Used to grant admin privileges. Existence of a document indicates admin access.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to ensure Authorization Independence, clarity, and scalability, aligning with the Secure File Hub application's requirements. The structure prioritizes path-based ownership and denormalization of authorization data to avoid complex `get()` calls in security rules. Here's a breakdown:\n\n1.  **Users Collection:** `/users/{userId}` stores user profiles. User documents are private and accessible only to the user and administrators. The `userId` is obtained from `request.auth.uid`.\n\n2.  **Uploads Collection:** `/users/{userId}/uploads/{uploadId}` stores files uploaded by users.  This structure enables simple, path-based security rules that enforce ownership. Each upload is associated with a specific user. This achieves Authorization Independence, as each document's access control is defined independently of other documents and collections.\n\n3.  **Audit Logs Collection:** `/audit_logs/{auditLogId}` stores audit logs for all actions performed in the system. Since audit logs may need to be accessible to administrators for monitoring purposes, they are stored in a separate top-level collection.  Rules will enforce that only admins can list/read/write.\n\n4.  **Roles Collection:** `/roles_admin/{userId}` is used to grant admin privileges. The existence of a document with a user's ID indicates admin access. This simplifies checking for admin status in security rules using `exists()` without needing to read the user document.\n\n**Authorization Independence (CRITICAL):**\n\n*   The `/users/{userId}/uploads/{uploadId}` path ensures that each upload's security rules are based solely on the `userId` parameter and the `request.auth.uid`. There's no reliance on retrieving parent document data using `get()`. This enables atomic operations and simplifies security rule evaluation.\n\n**QAPs (Rules are not Filters):**\n\n*   The segregation of data into user-owned uploads and global audit logs enables secure `list` operations. Admins can list all audit logs, while users can only list their own uploads via the `/users/{userId}/uploads` collection. Since authorization rules are not filters, this segregation improves performance and security.\n\n*   The use of `/roles_admin/{userId}` to manage admin roles enables efficient and secure role checks.  The `exists()` function in rules provides an optimized mechanism to verify admin status without reading user document data. This adheres to the principle of Authorization Independence and enhances QAP by avoiding filtering based on document content.\n"
+  }
+}
