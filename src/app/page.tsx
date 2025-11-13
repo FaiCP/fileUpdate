@@ -64,20 +64,37 @@ export default function LoginPage() {
     
     setIsCreatingAdmin(true);
     
+    const adminEmail = 'ana.garcia@institucion.com';
+    const adminPassword = 'password';
+    
     try {
-        const adminEmail = 'ana.garcia@institucion.com';
-        const adminPassword = 'password';
-
-        // 1. Create Auth user
-        const userCredential = await createUserWithEmailAndPassword(auth, adminEmail, adminPassword);
-        const newUserId = userCredential.user.uid;
+        let userId;
+        try {
+            // 1. Attempt to create Auth user
+            const userCredential = await createUserWithEmailAndPassword(auth, adminEmail, adminPassword);
+            userId = userCredential.user.uid;
+        } catch (error: any) {
+            // If the user already exists in Auth, log in to get the UID and proceed.
+            if (error.code === 'auth/email-already-in-use') {
+                const userCredential = await signInWithEmailAndPassword(auth, adminEmail, adminPassword);
+                userId = userCredential.user.uid;
+                toast({ title: "Info", description: "El usuario ya existe en autenticación, creando registro en base de datos...", variant: "default"});
+            } else {
+                // For other auth errors (weak password, etc.), re-throw to be caught below.
+                throw error;
+            }
+        }
+        
+        if (!userId) {
+            throw new Error("No se pudo obtener el ID del usuario.");
+        }
 
         // 2. Prepare batch write for Firestore
         const batch = writeBatch(firestore);
 
         // 3. Create Firestore user document
         const newUser: User = {
-            id: newUserId,
+            id: userId,
             nombres: 'Ana',
             apellidos: 'García (Admin)',
             email: adminEmail,
@@ -85,13 +102,13 @@ export default function LoginPage() {
             departamento: 'Administración',
             rol: 'admin',
             activo: true,
-            avatarUrl: `https://picsum.photos/seed/${newUserId}/100/100`,
+            avatarUrl: `https://picsum.photos/seed/${userId}/100/100`,
         };
-        const userRef = doc(firestore, "users", newUserId);
+        const userRef = doc(firestore, "users", userId);
         batch.set(userRef, newUser);
 
         // 4. Create admin role document
-        const adminRoleRef = doc(firestore, "roles_admin", newUserId);
+        const adminRoleRef = doc(firestore, "roles_admin", userId);
         batch.set(adminRoleRef, { grantedAt: new Date().toISOString() });
 
         // 5. Commit batch
@@ -105,8 +122,8 @@ export default function LoginPage() {
         console.error("Error creating admin user:", error);
         let errorMessage = "Ocurrió un error al crear el administrador.";
         if (error.code === 'auth/email-already-in-use') {
-            errorMessage = "El usuario administrador ya existe en Autenticación, pero la base de datos estaba vacía. Inicia sesión.";
-            setNeedsSeeding(false); // User exists, no need to show the button anymore
+             errorMessage = "El usuario administrador ya existe en Autenticación, pero la base de datos estaba vacía. Inicia sesión.";
+             setNeedsSeeding(false); // User exists, no need to show the button anymore
         }
         toast({ title: "Error", description: errorMessage, variant: "destructive"});
     } finally {
@@ -129,6 +146,7 @@ export default function LoginPage() {
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
+      // The redirect is now handled by the layout after successful login and user data fetching.
       router.push('/dashboard');
     } catch (error: any) {
       let errorMessage = "Ocurrió un error al iniciar sesión.";
