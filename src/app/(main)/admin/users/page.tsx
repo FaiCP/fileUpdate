@@ -22,13 +22,56 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { users } from "@/lib/data";
+import { users as initialUsers } from "@/lib/data";
 import { PageHeader } from "@/components/page-header";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { UserAddDialog } from "@/components/user-add-dialog";
+import type { User } from "@/lib/types";
 
 export default function AdminUsersPage() {
-  const [isAddUserOpen, setAddUserOpen] = useState(false);
+  const [users, setUsers] = useState<User[]>(initialUsers);
+  const [isUserDialogOpen, setUserDialogOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | undefined>(undefined);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const handleOpenDialog = (user?: User) => {
+    setEditingUser(user);
+    setUserDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setEditingUser(undefined);
+    setUserDialogOpen(false);
+  };
+
+  const handleSaveUser = (user: Omit<User, 'id' | 'avatarUrl' | 'activo'>) => {
+    if (editingUser) {
+      // Edit existing user
+      setUsers(users.map(u => u.id === editingUser.id ? { ...editingUser, ...user } : u));
+    } else {
+      // Add new user
+      const newUser: User = {
+        ...user,
+        id: Math.max(...users.map(u => u.id)) + 1,
+        activo: true,
+        avatarUrl: `https://picsum.photos/seed/${Math.random()}/100/100`,
+      };
+      setUsers([...users, newUser]);
+    }
+  };
+
+  const toggleUserStatus = (userId: number) => {
+    setUsers(users.map(u => u.id === userId ? { ...u, activo: !u.activo } : u));
+  };
+  
+  const promoteToAdmin = (userId: number) => {
+    setUsers(users.map(u => u.id === userId ? { ...u, rol: 'admin' } : u));
+  };
+
+  const filteredUsers = users.filter(user =>
+    `${user.nombres} ${user.apellidos}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="container mx-auto px-0">
@@ -43,18 +86,26 @@ export default function AdminUsersPage() {
               type="search"
               placeholder="Buscar por nombre, email..."
               className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[320px]"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <UserAddDialog isOpen={isAddUserOpen} setIsOpen={setAddUserOpen}>
-            <Button size="sm" className="h-9 gap-1">
-              <PlusCircle className="h-4 w-4" />
-              <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                Añadir Usuario
-              </span>
-            </Button>
-          </UserAddDialog>
+          <Button size="sm" className="h-9 gap-1" onClick={() => handleOpenDialog()}>
+            <PlusCircle className="h-4 w-4" />
+            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+              Añadir Usuario
+            </span>
+          </Button>
         </div>
       </PageHeader>
+      
+      <UserAddDialog 
+        isOpen={isUserDialogOpen} 
+        setIsOpen={handleCloseDialog}
+        onSave={handleSaveUser}
+        user={editingUser}
+      />
+
       <Card>
         <CardContent className="pt-6">
           <Table>
@@ -70,7 +121,7 @@ export default function AdminUsersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {users.map((user) => (
+              {filteredUsers.map((user) => (
                 <TableRow key={user.id}>
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-3">
@@ -101,14 +152,14 @@ export default function AdminUsersPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                        <DropdownMenuItem>Editar</DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive">
+                        <DropdownMenuItem onClick={() => handleOpenDialog(user)}>Editar</DropdownMenuItem>
+                        <DropdownMenuItem className={user.activo ? "text-destructive" : ""} onClick={() => toggleUserStatus(user.id)}>
                           {user.activo ? "Desactivar" : "Activar"}
                         </DropdownMenuItem>
                          {user.rol !== 'admin' && (
                           <>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => promoteToAdmin(user.id)}>
                               <UserCog className="mr-2 h-4 w-4" />
                               Hacer Administrador
                             </DropdownMenuItem>
