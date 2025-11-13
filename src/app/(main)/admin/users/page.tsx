@@ -1,6 +1,7 @@
 "use client";
 
-import { MoreHorizontal, PlusCircle, Search, Users, UserCog } from "lucide-react";
+import { useState } from "react";
+import { MoreHorizontal, PlusCircle, Search, UserCog } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -24,8 +25,11 @@ import {
 import { users } from "@/lib/data";
 import { PageHeader } from "@/components/page-header";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAddDialog } from "@/components/user-add-dialog";
 
 export default function AdminUsersPage() {
+  const [isAddUserOpen, setAddUserOpen] = useState(false);
+
   return (
     <div className="container mx-auto px-0">
       <PageHeader
@@ -41,12 +45,14 @@ export default function AdminUsersPage() {
               className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[320px]"
             />
           </div>
-          <Button size="sm" className="h-9 gap-1">
-            <PlusCircle className="h-4 w-4" />
-            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-              Añadir Usuario
-            </span>
-          </Button>
+          <UserAddDialog isOpen={isAddUserOpen} setIsOpen={setAddUserOpen}>
+            <Button size="sm" className="h-9 gap-1">
+              <PlusCircle className="h-4 w-4" />
+              <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                Añadir Usuario
+              </span>
+            </Button>
+          </UserAddDialog>
         </div>
       </PageHeader>
       <Card>
