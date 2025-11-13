@@ -1,6 +1,7 @@
 "use client"
 
 import { Clock, Download, FileCheck2, FileClock, FileText, FileX2, Hourglass, ListFilter } from "lucide-react";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -44,6 +45,7 @@ export default function UserFilesPage() {
   if (!currentUser) return null;
 
   const userUploads = getUploadsForUser(currentUser.id);
+  const dummyPdfUrl = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf";
 
   return (
     <div className="container mx-auto px-0">
@@ -103,10 +105,12 @@ export default function UserFilesPage() {
                   <TableCell className="hidden md:table-cell">{upload.fecha_subida}</TableCell>
                   <TableCell className="text-right">
                     {upload.estado === 'APROBADO' && upload.acta_pdf_path && (
-                      <Button variant="outline" size="sm">
-                        <Download className="mr-2 h-4 w-4" />
-                        Descargar Acta
-                      </Button>
+                      <Link href={dummyPdfUrl} target="_blank" rel="noopener noreferrer">
+                        <Button variant="outline" size="sm">
+                          <Download className="mr-2 h-4 w-4" />
+                          Descargar Acta
+                        </Button>
+                      </Link>
                     )}
                   </TableCell>
                 </TableRow>

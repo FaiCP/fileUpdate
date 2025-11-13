@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react";
+import Link from "next/link";
 import { Clock, Download, FileCheck2, FileClock, FileText, FileX2, Hourglass } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,8 @@ export function DashboardUser() {
     if (!currentUser) return [];
     return getUploadsForUser(currentUser.id);
   });
+
+  const dummyPdfUrl = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf";
   
   if (!currentUser) return null;
 
@@ -103,10 +106,12 @@ export function DashboardUser() {
                   </TableCell>
                   <TableCell className="text-right">
                     {upload.estado === 'APROBADO' && upload.acta_pdf_path && (
-                      <Button variant="outline" size="sm">
-                        <Download className="mr-2 h-4 w-4" />
-                        Acta
-                      </Button>
+                      <Link href={dummyPdfUrl} target="_blank" rel="noopener noreferrer">
+                        <Button variant="outline" size="sm">
+                          <Download className="mr-2 h-4 w-4" />
+                          Acta
+                        </Button>
+                      </Link>
                     )}
                   </TableCell>
                 </TableRow>
