@@ -1,6 +1,7 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
+import { useRouter } from 'next/navigation';
 import { useUser, useFirestore } from "@/firebase";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { SidebarNav } from "@/components/sidebar-nav";
@@ -18,6 +19,7 @@ export default function MainLayout({
 }>) {
   const { user: authUser, isUserLoading: isAuthLoading } = useUser();
   const firestore = useFirestore();
+  const router = useRouter();
 
   const userDocRef = useMemoFirebase(() => {
     if (!firestore || !authUser) return null;
@@ -29,6 +31,13 @@ export default function MainLayout({
   // The final loading state depends on both auth and Firestore doc loading.
   const isLoading = isAuthLoading || (authUser && isUserDocLoading);
 
+  useEffect(() => {
+    // This effect handles redirection after all loading is complete.
+    if (!isLoading && !authUser) {
+      router.replace('/');
+    }
+  }, [isLoading, authUser, router]);
+
   // While loading, show a full-page loading indicator.
   if (isLoading) {
     return (
@@ -38,12 +47,10 @@ export default function MainLayout({
     );
   }
   
-  // After loading, if there's no authenticated user or no corresponding Firestore document, redirect.
+  // If loading is finished, but we still don't have a user (either auth or db profile),
+  // render nothing, allowing the useEffect to handle the redirect.
+  // This prevents rendering the layout for a split second before redirecting.
   if (!authUser || !currentUser) {
-     if (typeof window !== 'undefined') {
-      window.location.href = '/';
-    }
-    // Return null to prevent rendering children during the redirect.
     return null;
   }
 
