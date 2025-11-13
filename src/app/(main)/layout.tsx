@@ -1,15 +1,13 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from 'next/navigation';
 import { useUser, useFirestore } from "@/firebase";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { SidebarNav } from "@/components/sidebar-nav";
 import { UserNav } from "@/components/user-nav";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { doc } from "firebase/firestore";
-import { useDoc } from "@/firebase/firestore/use-doc";
-import { useMemoFirebase } from "@/firebase/provider";
+import { doc, getDoc } from "firebase/firestore";
 import type { User } from "@/lib/types";
 
 export default function MainLayout({
@@ -21,40 +19,57 @@ export default function MainLayout({
   const firestore = useFirestore();
   const router = useRouter();
 
-  const userDocRef = useMemoFirebase(() => {
-    if (!firestore || !authUser) return null;
-    return doc(firestore, 'users', authUser.uid);
-  }, [firestore, authUser]);
-
-  const { data: currentUser, isLoading: isUserDocLoading } = useDoc<User>(userDocRef);
-
-  // The final loading state depends on both auth and Firestore doc loading.
-  const isLoading = isAuthLoading || (authUser && isUserDocLoading);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [layoutState, setLayoutState] = useState<'loading' | 'authenticated' | 'unauthenticated'>('loading');
 
   useEffect(() => {
-    // This effect handles redirection after all loading is complete.
-    if (!isLoading && !authUser) {
-      router.replace('/');
+    // If Firebase auth is still loading, we are in a loading state.
+    if (isAuthLoading) {
+      setLayoutState('loading');
+      return;
     }
-  }, [isLoading, authUser, router]);
 
-  // While loading, show a full-page loading indicator.
-  if (isLoading) {
+    // If Firebase auth is done loading and there's no authenticated user,
+    // it's an unauthenticated state, so we should redirect.
+    if (!authUser) {
+      setLayoutState('unauthenticated');
+      router.replace('/');
+      return;
+    }
+
+    // If we have an authenticated user but haven't fetched their Firestore profile yet.
+    if (authUser && !currentUser) {
+      const fetchUserDocument = async () => {
+        const userDocRef = doc(firestore, 'users', authUser.uid);
+        const userDocSnap = await getDoc(userDocRef);
+
+        if (userDocSnap.exists()) {
+          setCurrentUser(userDocSnap.data() as User);
+          setLayoutState('authenticated');
+        } else {
+          // The user is authenticated, but their profile doesn't exist in Firestore.
+          // This is an error state, redirect to login to be safe.
+          console.error("Error: User document not found for authenticated user.");
+          setLayoutState('unauthenticated');
+          router.replace('/');
+        }
+      };
+
+      fetchUserDocument();
+    }
+  }, [isAuthLoading, authUser, currentUser, firestore, router]);
+
+
+  // Render based on the layout state
+  if (layoutState === 'loading' || layoutState === 'unauthenticated' || !currentUser) {
     return (
-        <div className="flex h-screen w-full items-center justify-center">
-            <div>Cargando datos de usuario...</div>
-        </div>
+      <div className="flex h-screen w-full items-center justify-center">
+        <div>Cargando datos de usuario...</div>
+      </div>
     );
   }
-  
-  // If loading is finished, but we still don't have a user (either auth or db profile),
-  // render nothing, allowing the useEffect to handle the redirect.
-  // This prevents rendering the layout for a split second before redirecting.
-  if (!authUser || !currentUser) {
-    return null;
-  }
 
-  // If loading is complete and we have a user, render the layout.
+  // If we are authenticated and have the user data, render the full layout.
   return (
     <SidebarProvider>
       <SidebarNav user={currentUser} />
