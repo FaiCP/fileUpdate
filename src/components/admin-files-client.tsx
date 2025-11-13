@@ -55,18 +55,20 @@ type AdminFilesClientPageProps = {
 }
 
 export function AdminFilesClientPage({ initialUploads, initialUsers }: AdminFilesClientPageProps) {
-    const firestore = useFirestore();
+    const firestore = useFirestore(); // This hook is now safe to call here.
 
     const [allUploads, setAllUploads] = useState<Upload[]>(initialUploads);
     const [allUsers, setAllUsers] = useState<User[]>(initialUsers);
-
-    // Subscribe to live updates
-    const usersQuery = useMemoFirebase(() => firestore ? collection(firestore, 'users') : null, [firestore]);
-    const { data: liveUsers } = useCollection<User>(usersQuery);
     
+    // Create memoized queries safely, ensuring firestore is available.
+    const usersQuery = useMemoFirebase(() => firestore ? collection(firestore, 'users') : null, [firestore]);
     const uploadsQuery = useMemoFirebase(() => firestore ? collectionGroup(firestore, 'uploads') : null, [firestore]);
+
+    // Subscribe to live updates using the memoized queries.
+    const { data: liveUsers } = useCollection<User>(usersQuery);
     const { data: liveUploads } = useCollection<Upload>(uploadsQuery);
 
+    // Update state when live data changes.
     useEffect(() => {
         if (liveUsers) setAllUsers(liveUsers);
     }, [liveUsers]);
@@ -98,6 +100,10 @@ export function AdminFilesClientPage({ initialUploads, initialUsers }: AdminFile
     };
 
     const handleUpdateStatus = (upload: UploadWithUser, status: UploadStatus, observations?: string) => {
+      if (!firestore) {
+        toast({ title: "Error", description: "Firestore not available.", variant: "destructive" });
+        return;
+      }
       const uploadRef = doc(firestore, 'users', upload.userId, 'uploads', upload.id);
       
       const updateData: Partial<Upload> = { status };
