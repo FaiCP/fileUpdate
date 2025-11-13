@@ -14,7 +14,15 @@ type DashboardPageProps = {
 export default function DashboardPage({ currentUser }: DashboardPageProps) {
   // If for some reason currentUser is not available, show a loading/error state.
   if (!currentUser) {
-    return <div>Cargando dashboard...</div>;
+    return (
+      <div className="container mx-auto px-0">
+         <PageHeader
+          title="Dashboard"
+          description="Cargando información del usuario..."
+        />
+        <div>Cargando dashboard...</div>
+      </div>
+    );
   }
 
   const isAdmin = currentUser.rol === 'admin';
