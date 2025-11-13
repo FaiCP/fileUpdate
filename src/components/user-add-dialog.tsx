@@ -35,23 +35,29 @@ export function UserAddDialog({ isOpen, setIsOpen, onSave, user, isFirstUser = f
     const [password, setPassword] = useState('');
 
     useEffect(() => {
-        if (user) {
-            setFormData({
-                nombres: user.nombres,
-                apellidos: user.apellidos,
-                email: user.email,
-                cedula: user.cedula,
-                departamento: user.departamento,
-                rol: user.rol,
-            });
-            setPassword(''); // Clear password for existing user edit
-        } else {
-            // If it's the first user, default the role to admin.
-            setFormData({
-                rol: isFirstUser ? 'admin' : 'user',
-                departamento: 'Recursos Humanos',
-            });
-            setPassword('');
+        if (isOpen) {
+            if (user) {
+                setFormData({
+                    nombres: user.nombres,
+                    apellidos: user.apellidos,
+                    email: user.email,
+                    cedula: user.cedula,
+                    departamento: user.departamento,
+                    rol: user.rol,
+                });
+                setPassword(''); // Clear password for existing user edit
+            } else {
+                // If it's the first user, default the role to admin.
+                setFormData({
+                    rol: isFirstUser ? 'admin' : 'user',
+                    departamento: 'Recursos Humanos',
+                    nombres: isFirstUser ? 'Admin' : '',
+                    apellidos: isFirstUser ? 'Principal' : '',
+                    email: isFirstUser ? 'admin@institucion.com' : '',
+                    cedula: isFirstUser ? '00000000-0' : '',
+                });
+                setPassword(isFirstUser ? 'password' : '');
+            }
         }
     }, [user, isOpen, isFirstUser]);
 
@@ -80,11 +86,13 @@ export function UserAddDialog({ isOpen, setIsOpen, onSave, user, isFirstUser = f
             if (user) {
                 // Editing user - no auth changes here, just Firestore
                 onSave(formData as UserData);
-            } else {
+            } else if (auth && formData.email) {
                 // Creating new user
-                const userCredential = await createUserWithEmailAndPassword(auth, formData.email!, password);
+                const userCredential = await createUserWithEmailAndPassword(auth, formData.email, password);
                 const newUserId = userCredential.user.uid;
                 onSave(formData as UserData, newUserId);
+            } else {
+                throw new Error("El servicio de autenticación no está disponible o falta el email.");
             }
             
             toast({
@@ -97,7 +105,7 @@ export function UserAddDialog({ isOpen, setIsOpen, onSave, user, isFirstUser = f
              toast({
                 variant: "destructive",
                 title: "Error al guardar",
-                description: error.message || "No se pudo crear o actualizar el usuario.",
+                description: error.code === 'auth/email-already-in-use' ? 'Este correo electrónico ya está en uso.' : (error.message || "No se pudo crear o actualizar el usuario."),
             });
         }
     }
@@ -108,7 +116,7 @@ export function UserAddDialog({ isOpen, setIsOpen, onSave, user, isFirstUser = f
         <DialogHeader>
           <DialogTitle className="font-headline text-2xl">{user ? 'Editar Usuario' : isFirstUser ? 'Crear Primer Administrador' : 'Añadir Nuevo Usuario'}</DialogTitle>
           <DialogDescription>
-            {user ? 'Modifica la información del usuario.' : isFirstUser ? 'Este será el primer usuario administrador del sistema.' : 'Completa la información para crear una nueva cuenta en el sistema.'}
+            {user ? 'Modifica la información del usuario.' : isFirstUser ? 'Este será el primer usuario administrador del sistema. Inicia sesión con estas credenciales después de crearlo.' : 'Completa la información para crear una nueva cuenta en el sistema.'}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
@@ -149,7 +157,7 @@ export function UserAddDialog({ isOpen, setIsOpen, onSave, user, isFirstUser = f
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="rol">Rol</Label>
-                        <Select name="rol" required value={formData.rol || ''} onValueChange={(value) => handleSelectChange('rol', value)} disabled={isFirstUser}>
+                        <Select name="rol" required value={formData.rol || ''} onValueChange={(value) => handleSelectChange('rol', value)} disabled={isFirstUser && !user}>
                             <SelectTrigger id="rol">
                             <SelectValue placeholder="Selecciona un rol" />
                             </SelectTrigger>
@@ -161,7 +169,7 @@ export function UserAddDialog({ isOpen, setIsOpen, onSave, user, isFirstUser = f
                     </div>
                 </div>
                  <div className="space-y-2">
-                    <Label htmlFor="password">{user ? 'Nueva Contraseña (Opcional)' : 'Contraseña Temporal'}</Label>
+                    <Label htmlFor="password">{user ? 'Nueva Contraseña (Opcional)' : 'Contraseña'}</Label>
                     <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required={!user} />
                 </div>
             </div>
