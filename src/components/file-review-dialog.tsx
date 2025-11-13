@@ -12,31 +12,27 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import type { Upload } from "@/lib/types";
+import type { Upload, UploadStatus } from "@/lib/types";
 import { getUserById } from "@/lib/data";
-import { useToast } from "@/hooks/use-toast";
 import { Check, Send, X } from "lucide-react";
+import { useState } from "react";
 
 type FileReviewDialogProps = {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
   upload: Upload;
+  onUpdateStatus: (uploadId: number, status: UploadStatus, observaciones?: string) => void;
 };
 
-export function FileReviewDialog({ isOpen, setIsOpen, upload }: FileReviewDialogProps) {
-  const { toast } = useToast();
+export function FileReviewDialog({ isOpen, setIsOpen, upload, onUpdateStatus }: FileReviewDialogProps) {
   const user = getUserById(upload.user_id);
+  const [observaciones, setObservaciones] = useState(upload.observaciones || "");
 
-  const handleAction = (action: string) => {
-    toast({
-      title: `Acción: ${action}`,
-      description: `Se ha procesado la acción para el archivo ${upload.original_name}.`,
-    });
+  const handleAction = (status: UploadStatus) => {
+    onUpdateStatus(upload.id, status, observaciones);
     setIsOpen(false);
   };
   
-  // In a real app, the file path would be a secure URL from a storage service.
-  // We'll use a placeholder service that can show different files based on a seed.
   const filePreviewUrl = `https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf`;
 
   return (
@@ -69,17 +65,18 @@ export function FileReviewDialog({ isOpen, setIsOpen, upload }: FileReviewDialog
                         id="observaciones" 
                         placeholder="Añadir comentarios para el usuario..." 
                         className="flex-1"
-                        defaultValue={upload.observaciones}
+                        value={observaciones}
+                        onChange={(e) => setObservaciones(e.target.value)}
                     />
                  </div>
                  <DialogFooter className="flex-col-reverse sm:flex-col-reverse sm:space-x-0 gap-2">
-                    <Button onClick={() => handleAction("Aprobado")} className="w-full bg-green-600 hover:bg-green-700">
+                    <Button onClick={() => handleAction("APROBADO")} className="w-full bg-green-600 hover:bg-green-700">
                         <Check className="mr-2 h-4 w-4" /> Aprobar y Generar Acta
                     </Button>
-                    <Button onClick={() => handleAction("Correcciones Solicitadas")} variant="outline" className="w-full">
+                    <Button onClick={() => handleAction("CORRECCIONES")} variant="outline" className="w-full">
                         <Send className="mr-2 h-4 w-4" /> Solicitar Correcciones
                     </Button>
-                    <Button onClick={() => handleAction("Rechazado")} variant="destructive" className="w-full">
+                    <Button onClick={() => handleAction("RECHAZADO")} variant="destructive" className="w-full">
                         <X className="mr-2 h-4 w-4" /> Rechazar Archivo
                     </Button>
                  </DialogFooter>
