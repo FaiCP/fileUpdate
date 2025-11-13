@@ -1,3 +1,4 @@
+
 "use client";
 
 import { FileText, MoreHorizontal, Search } from "lucide-react";
@@ -27,7 +28,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState, useMemo, useEffect } from "react";
 import { FileReviewDialog } from "@/components/file-review-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { useFirestore, updateDocumentNonBlocking, useCollection } from "@/firebase";
+import { useFirestore, updateDocumentNonBlocking, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, doc, collectionGroup } from "firebase/firestore";
 import { statusConfig } from "@/lib/status-config";
 
@@ -56,13 +57,23 @@ type AdminFilesClientPageProps = {
 export function AdminFilesClientPage({ initialUploads, initialUsers }: AdminFilesClientPageProps) {
     const firestore = useFirestore();
 
-    // Use server-fetched data as initial state, but subscribe to live updates
-    const { data: allUsers } = useCollection<User>(
-      useMemo(() => collection(firestore, 'users'), [firestore]),
-    );
-     const { data: allUploads } = useCollection<Upload>(
-      useMemo(() => collectionGroup(firestore, 'uploads'), [firestore])
-    );
+    const [allUploads, setAllUploads] = useState<Upload[]>(initialUploads);
+    const [allUsers, setAllUsers] = useState<User[]>(initialUsers);
+
+    // Subscribe to live updates
+    const usersQuery = useMemoFirebase(() => firestore ? collection(firestore, 'users') : null, [firestore]);
+    const { data: liveUsers } = useCollection<User>(usersQuery);
+    
+    const uploadsQuery = useMemoFirebase(() => firestore ? collectionGroup(firestore, 'uploads') : null, [firestore]);
+    const { data: liveUploads } = useCollection<Upload>(uploadsQuery);
+
+    useEffect(() => {
+        if (liveUsers) setAllUsers(liveUsers);
+    }, [liveUsers]);
+
+    useEffect(() => {
+        if (liveUploads) setAllUploads(liveUploads);
+    }, [liveUploads]);
     
     const [isReviewDialogOpen, setReviewDialogOpen] = useState(false);
     const [selectedUpload, setSelectedUpload] = useState<UploadWithUser | undefined>(undefined);
@@ -74,15 +85,12 @@ export function AdminFilesClientPage({ initialUploads, initialUsers }: AdminFile
 
     // Enrich uploads with user data once users are loaded
     const uploadsWithUsers = useMemo(() => {
-        const currentUploads = allUploads ?? initialUploads;
-        const currentUsers = allUsers ?? initialUsers;
-
-        if (!currentUploads || !currentUsers) return [];
-        return currentUploads.map(upload => ({
+        if (!allUploads || !allUsers) return [];
+        return allUploads.map(upload => ({
             ...upload,
-            user: getUserById(upload.userId, currentUsers)
+            user: getUserById(upload.userId, allUsers)
         })).sort((a, b) => new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime());
-    }, [allUploads, allUsers, initialUploads, initialUsers]);
+    }, [allUploads, allUsers]);
 
     const handleReviewClick = (upload: UploadWithUser) => {
         setSelectedUpload(upload);
