@@ -1,20 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useFirestore } from "./provider";
+import { useAuth, useFirestore } from "./provider";
 import {
   collection,
   getDocs,
   writeBatch,
   doc,
 } from "firebase/firestore";
-import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword } from "firebase/auth";
 import { User } from "@/lib/types";
 
 // This component will run once on mount, check if users exist, and if not, seed the database.
 export function FirebaseSeed() {
   const firestore = useFirestore();
-  const auth = getAuth();
+  const auth = useAuth();
   const [isSeeding, setIsSeeding] = useState(false);
   const [hasSeeded, setHasSeeded] = useState(false);
 
@@ -35,7 +35,7 @@ export function FirebaseSeed() {
           const adminCred = await createUserWithEmailAndPassword(auth, adminEmail, adminPassword);
           const adminUid = adminCred.user.uid;
 
-          const adminUser: User = {
+          const adminUser: Omit<User, 'avatarUrl'> = {
             id: adminUid,
             nombres: "Ana",
             apellidos: "García",
@@ -44,7 +44,6 @@ export function FirebaseSeed() {
             email: adminEmail,
             rol: "admin",
             activo: true,
-            avatarUrl: `https://picsum.photos/seed/admin/100/100`,
           };
 
           // --- Seed Normal User ---
@@ -53,7 +52,7 @@ export function FirebaseSeed() {
           const userCred = await createUserWithEmailAndPassword(auth, userEmail, userPassword);
           const userUid = userCred.user.uid;
 
-          const normalUser: User = {
+          const normalUser: Omit<User, 'avatarUrl'> = {
             id: userUid,
             nombres: "Carlos",
             apellidos: "Perez",
@@ -62,21 +61,20 @@ export function FirebaseSeed() {
             email: userEmail,
             rol: "user",
             activo: true,
-            avatarUrl: `https://picsum.photos/seed/user/100/100`,
           };
           
           // --- Batch Write to Firestore ---
           const batch = writeBatch(firestore);
 
           const adminUserRef = doc(firestore, "users", adminUid);
-          batch.set(adminUserRef, adminUser);
+          batch.set(adminUserRef, { ...adminUser, avatarUrl: `https://picsum.photos/seed/${adminUid}/100` });
           
           // Also grant admin role in the roles_admin collection for security rules
           const adminRoleRef = doc(firestore, "roles_admin", adminUid);
           batch.set(adminRoleRef, { grantedAt: new Date() });
 
           const normalUserRef = doc(firestore, "users", userUid);
-          batch.set(normalUserRef, normalUser);
+          batch.set(normalUserRef, { ...normalUser, avatarUrl: `https://picsum.photos/seed/${userUid}/100` });
           
           await batch.commit();
 

@@ -61,7 +61,7 @@ export default function AdminUsersPage() {
         ...userData,
         id: newUserId,
         activo: true,
-        avatarUrl: `https://picsum.photos/seed/${Math.random()}/100/100`,
+        avatarUrl: `https://picsum.photos/seed/${newUserId}/100/100`,
       };
       setDocumentNonBlocking(newUserRef, newUser, { merge: true });
 

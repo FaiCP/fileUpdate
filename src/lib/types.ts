@@ -9,7 +9,7 @@ export type User = {
   email: string;
   rol: 'user' | 'admin';
   activo: boolean;
-  avatarUrl: string;
+  avatarUrl?: string;
   dateJoined?: Timestamp;
 };
 
