@@ -39,16 +39,6 @@ export default function AdminUsersPage() {
   const [editingUser, setEditingUser] = useState<User | undefined>(undefined);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Determine if this will be the first user. Automatically open the dialog if it is.
-  const isFirstUser = !isLoading && (!users || users.length === 0);
-  
-  useEffect(() => {
-    if (isFirstUser) {
-      setUserDialogOpen(true);
-    }
-  }, [isFirstUser]);
-
-
   const handleOpenDialog = (user?: User) => {
     setEditingUser(user);
     setUserDialogOpen(true);
@@ -122,7 +112,7 @@ export default function AdminUsersPage() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Button size="sm" className="h-9 gap-1" onClick={() => handleOpenDialog()} disabled={isFirstUser}>
+          <Button size="sm" className="h-9 gap-1" onClick={() => handleOpenDialog()}>
             <PlusCircle className="h-4 w-4" />
             <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
               Añadir Usuario
@@ -136,7 +126,6 @@ export default function AdminUsersPage() {
         setIsOpen={handleCloseDialog}
         onSave={handleSaveUser}
         user={editingUser}
-        isFirstUser={isFirstUser}
       />
 
       <Card>
@@ -155,14 +144,14 @@ export default function AdminUsersPage() {
             </TableHeader>
             <TableBody>
               {isLoading && <TableRow><TableCell colSpan={5}>Cargando usuarios...</TableCell></TableRow>}
-              {isFirstUser && (
+              {!isLoading && filteredUsers.length === 0 && (
                 <TableRow>
                     <TableCell colSpan={5} className="text-center text-muted-foreground py-10">
-                        No hay usuarios en el sistema. Creando el primer administrador...
+                        No se encontraron usuarios.
                     </TableCell>
                 </TableRow>
               )}
-              {!isLoading && !isFirstUser && filteredUsers.map((user) => (
+              {!isLoading && filteredUsers.map((user) => (
                 <TableRow key={user.id}>
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-3">

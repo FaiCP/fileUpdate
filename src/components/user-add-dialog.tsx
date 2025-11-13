@@ -25,10 +25,9 @@ type UserAddDialogProps = {
   setIsOpen: (open: boolean) => void;
   onSave: (user: UserData, userId?: string) => void;
   user?: User;
-  isFirstUser?: boolean;
 };
 
-export function UserAddDialog({ isOpen, setIsOpen, onSave, user, isFirstUser = false }: UserAddDialogProps) {
+export function UserAddDialog({ isOpen, setIsOpen, onSave, user }: UserAddDialogProps) {
     const auth = useAuth();
     const { toast } = useToast();
     const [formData, setFormData] = useState<Partial<UserData>>({});
@@ -47,19 +46,18 @@ export function UserAddDialog({ isOpen, setIsOpen, onSave, user, isFirstUser = f
                 });
                 setPassword(''); // Clear password for existing user edit
             } else {
-                // If it's the first user, default the role to admin.
                 setFormData({
-                    rol: isFirstUser ? 'admin' : 'user',
+                    rol: 'user',
                     departamento: 'Recursos Humanos',
-                    nombres: isFirstUser ? 'Admin' : '',
-                    apellidos: isFirstUser ? 'Principal' : '',
-                    email: isFirstUser ? 'admin@institucion.com' : '',
-                    cedula: isFirstUser ? '00000000-0' : '',
+                    nombres: '',
+                    apellidos: '',
+                    email: '',
+                    cedula: '',
                 });
-                setPassword(isFirstUser ? 'password' : '');
+                setPassword('');
             }
         }
-    }, [user, isOpen, isFirstUser]);
+    }, [user, isOpen]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { id, value } = e.target;
@@ -114,9 +112,9 @@ export function UserAddDialog({ isOpen, setIsOpen, onSave, user, isFirstUser = f
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle className="font-headline text-2xl">{user ? 'Editar Usuario' : isFirstUser ? 'Crear Primer Administrador' : 'Añadir Nuevo Usuario'}</DialogTitle>
+          <DialogTitle className="font-headline text-2xl">{user ? 'Editar Usuario' : 'Añadir Nuevo Usuario'}</DialogTitle>
           <DialogDescription>
-            {user ? 'Modifica la información del usuario.' : isFirstUser ? 'Este será el primer usuario administrador del sistema. Inicia sesión con estas credenciales después de crearlo.' : 'Completa la información para crear una nueva cuenta en el sistema.'}
+            {user ? 'Modifica la información del usuario.' : 'Completa la información para crear una nueva cuenta en el sistema.'}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
@@ -157,7 +155,7 @@ export function UserAddDialog({ isOpen, setIsOpen, onSave, user, isFirstUser = f
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="rol">Rol</Label>
-                        <Select name="rol" required value={formData.rol || ''} onValueChange={(value) => handleSelectChange('rol', value)} disabled={isFirstUser && !user}>
+                        <Select name="rol" required value={formData.rol || ''} onValueChange={(value) => handleSelectChange('rol', value)}>
                             <SelectTrigger id="rol">
                             <SelectValue placeholder="Selecciona un rol" />
                             </SelectTrigger>
