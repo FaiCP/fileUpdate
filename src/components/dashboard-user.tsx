@@ -1,17 +1,17 @@
 "use client"
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
-import { Clock, Download, FileCheck2, FileClock, FileText, FileX2, Hourglass } from "lucide-react";
+import { Download, FileCheck2, FileClock, FileText, FileX2, Hourglass } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { getUploadsForUser, uploads as allUploads } from "@/lib/data";
 import type { Upload, UploadStatus, User } from "@/lib/types";
 import { FileUploadDialog } from "@/components/file-upload-dialog";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { collection, query, where, orderBy, limit } from "firebase/firestore";
 
 const statusConfig: Record<UploadStatus, { label: string; icon: React.ElementType; color: string }> = {
   PENDIENTE: { label: "Pendiente", icon: Hourglass, color: "bg-yellow-500" },
@@ -36,37 +36,29 @@ type DashboardUserProps = {
 }
 
 export function DashboardUser({ currentUser }: DashboardUserProps) {
-  const [userUploads, setUserUploads] = useState(() => {
-    return getUploadsForUser(currentUser.id);
-  });
-
+  const firestore = useFirestore();
   const dummyPdfUrl = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf";
-  
-  const handleUploadComplete = (newUploadData: Omit<Upload, 'id' | 'user_id' | 'fecha_subida' | 'estado'> & { original_name: string }) => {
-    const newUpload: Upload = {
-        ...newUploadData,
-        id: Math.max(...allUploads.map(u => u.id), 0) + 1,
-        user_id: currentUser.id,
-        fecha_subida: format(new Date(), 'yyyy-MM-dd HH:mm'),
-        estado: 'PENDIENTE'
-    };
 
-    // This would be a DB insert in a real app
-    allUploads.unshift(newUpload); 
-    setUserUploads(prevUploads => [newUpload, ...prevUploads]);
-  };
+  const recentUploadsQuery = useMemoFirebase(() => {
+    if (!firestore || !currentUser) return null;
+    return query(
+      collection(firestore, 'users', currentUser.id, 'uploads'),
+      orderBy('uploadDate', 'desc'),
+      limit(5)
+    );
+  }, [firestore, currentUser]);
 
-  const recentUploads = userUploads.slice(0, 5);
+  const { data: recentUploads, isLoading } = useCollection<Upload>(recentUploadsQuery);
 
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle className="font-headline text-2xl">Bienvenido, {currentUser.nombres}</CardTitle>
-          <CardDescription>¿Listo para empezar? Sube tu primer archivo para que sea revisado.</CardDescription>
+          <CardDescription>¿Listo para empezar? Sube tus archivos para que sean revisados.</CardDescription>
         </CardHeader>
         <CardContent>
-          <FileUploadDialog onUploadComplete={handleUploadComplete} />
+          <FileUploadDialog currentUser={currentUser} />
         </CardContent>
       </Card>
 
@@ -86,23 +78,24 @@ export function DashboardUser({ currentUser }: DashboardUserProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {recentUploads.map((upload) => (
+              {isLoading && <TableRow><TableCell colSpan={4}>Cargando...</TableCell></TableRow>}
+              {recentUploads && recentUploads.map((upload) => (
                 <TableRow key={upload.id}>
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-3">
                       <FileText className="h-5 w-5 text-muted-foreground" />
                       <div className="flex flex-col">
-                        <span>{upload.original_name}</span>
-                        <span className="text-xs text-muted-foreground md:hidden">{upload.fecha_subida}</span>
+                        <span>{upload.originalName}</span>
+                        <span className="text-xs text-muted-foreground md:hidden">{upload.uploadDate}</span>
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className="hidden md:table-cell">{upload.fecha_subida}</TableCell>
+                  <TableCell className="hidden md:table-cell">{upload.uploadDate}</TableCell>
                   <TableCell>
-                    <StatusBadge status={upload.estado} />
+                    <StatusBadge status={upload.status} />
                   </TableCell>
                   <TableCell className="text-right">
-                    {upload.estado === 'APROBADO' && upload.acta_pdf_path && (
+                    {upload.status === 'APROBADO' && upload.acceptanceActPath && (
                       <Link href={dummyPdfUrl} target="_blank" rel="noopener noreferrer">
                         <Button variant="outline" size="sm">
                           <Download className="mr-2 h-4 w-4" />

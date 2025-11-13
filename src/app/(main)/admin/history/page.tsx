@@ -5,12 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Bar, BarChart, CartesianGrid, XAxis, Pie, PieChart, Cell } from "recharts";
-import { uploads } from "@/lib/data";
 import { Upload, FileText, Users } from "lucide-react";
 import { useMemo } from "react";
 import type { Upload as UploadType, User as UserType } from "@/lib/types";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection } from "firebase/firestore";
+import { collection, collectionGroup } from "firebase/firestore";
 import { getUserById } from "@/lib/data";
 
 const COLORS = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))"];
@@ -18,37 +17,39 @@ const COLORS = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3
 export default function AdminHistoryPage() {
     const firestore = useFirestore();
     const { data: users, isLoading: usersLoading } = useCollection<UserType>(useMemoFirebase(() => collection(firestore, 'users'), [firestore]));
+    const { data: uploads, isLoading: uploadsLoading } = useCollection<UploadType>(useMemoFirebase(() => collectionGroup(firestore, 'uploads'), [firestore]));
 
-    const totalUploads = uploads.length;
+    const totalUploads = uploads?.length || 0;
     const totalUsers = users?.length || 0;
 
     const uploadsByDepartment = useMemo(() => {
-        if (!users) return [];
+        if (!users || !uploads) return [];
         const counts: { [key: string]: number } = {};
         uploads.forEach(upload => {
-            const user = getUserById(upload.user_id, users);
-            if (user) {
+            const user = getUserById(upload.userId, users);
+            if (user && user.departamento) {
                 counts[user.departamento] = (counts[user.departamento] || 0) + 1;
             }
         });
         return Object.entries(counts).map(([name, total]) => ({ name, total }));
-    }, [users]);
+    }, [users, uploads]);
 
     const uploadsByType = useMemo(() => {
+        if (!uploads) return [];
         const counts: { [key: string]: number } = {};
         uploads.forEach(upload => {
-            counts[upload.tipo_archivo] = (counts[upload.tipo_archivo] || 0) + 1;
+            counts[upload.fileType] = (counts[upload.fileType] || 0) + 1;
         });
         return Object.entries(counts).map(([name, value]) => ({ name, value, fill: COLORS[Math.floor(Math.random() * COLORS.length)] }));
-    }, []);
+    }, [uploads]);
 
     const uploadsWithUsers = useMemo(() => {
-         if (!users) return [];
+        if (!users || !uploads) return [];
         return uploads.map(upload => ({
             ...upload,
-            user: getUserById(upload.user_id, users)
-        })).sort((a, b) => new Date(b.fecha_subida).getTime() - new Date(a.fecha_subida).getTime());
-    }, [users]);
+            user: getUserById(upload.userId, users)
+        })).sort((a, b) => new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime());
+    }, [users, uploads]);
 
 
   return (
@@ -64,7 +65,7 @@ export default function AdminHistoryPage() {
             <Upload className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalUploads}</div>
+            <div className="text-2xl font-bold">{uploadsLoading ? '...' : totalUploads}</div>
             <p className="text-xs text-muted-foreground">Archivos totales en el sistema</p>
           </CardContent>
         </Card>
@@ -74,7 +75,7 @@ export default function AdminHistoryPage() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalUsers}</div>
+            <div className="text-2xl font-bold">{usersLoading ? '...' : totalUsers}</div>
             <p className="text-xs text-muted-foreground">Usuarios registrados en la plataforma</p>
           </CardContent>
         </Card>
@@ -134,13 +135,14 @@ export default function AdminHistoryPage() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
+                        {(uploadsLoading || usersLoading) && <TableRow><TableCell colSpan={5}>Cargando...</TableCell></TableRow>}
                         {uploadsWithUsers.map((upload) => (
                             <TableRow key={upload.id}>
-                                <TableCell className="font-medium">{upload.original_name}</TableCell>
+                                <TableCell className="font-medium">{upload.originalName}</TableCell>
                                 <TableCell>{upload.user ? `${upload.user.nombres} ${upload.user.apellidos}` : 'Usuario Desconocido'}</TableCell>
                                 <TableCell className="hidden md:table-cell">{upload.user?.departamento}</TableCell>
-                                <TableCell className="hidden sm:table-cell">{upload.estado}</TableCell>
-                                <TableCell className="hidden lg:cell text-right">{upload.fecha_subida}</TableCell>
+                                <TableCell className="hidden sm:table-cell">{upload.status}</TableCell>
+                                <TableCell className="hidden lg:cell text-right">{upload.uploadDate}</TableCell>
                             </TableRow>
                         ))}
                     </TableBody>

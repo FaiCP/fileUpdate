@@ -1,6 +1,6 @@
 "use client";
 
-import { FileCheck2, FileClock, FileText, FileX2, Hourglass, ListFilter, MoreHorizontal, Search } from "lucide-react";
+import { FileText, MoreHorizontal, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,29 +20,24 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { uploads as initialUploads, getUserById } from "@/lib/data";
-import type { Upload, UploadStatus } from "@/lib/types";
+import { getUserById } from "@/lib/data";
+import type { Upload, UploadStatus, User } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState, useMemo } from "react";
 import { FileReviewDialog } from "@/components/file-review-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, query } from "firebase/firestore";
+import { useCollection, useFirestore, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase";
+import { collection, query, where, collectionGroup, doc } from "firebase/firestore";
+import { statusConfig } from "@/lib/status-config";
 
-const statusConfig: Record<UploadStatus, { label: string; icon: React.ElementType; color: string; textColor: string }> = {
-  PENDIENTE: { label: "Pendiente", icon: Hourglass, color: "bg-yellow-100 dark:bg-yellow-900", textColor: "text-yellow-700 dark:text-yellow-300"},
-  'EN REVISION': { label: "En Revisión", icon: FileClock, color: "bg-blue-100 dark:bg-blue-900", textColor: "text-blue-700 dark:text-blue-300"},
-  CORRECCIONES: { label: "Correcciones", icon: FileX2, color: "bg-orange-100 dark:bg-orange-900", textColor: "text-orange-700 dark:text-orange-300"},
-  APROBADO: { label: "Aprobado", icon: FileCheck2, color: "bg-green-100 dark:bg-green-900", textColor: "text-green-700 dark:text-green-300"},
-  RECHAZADO: { label: "Rechazado", icon: FileX2, color: "bg-red-100 dark:bg-red-900", textColor: "text-red-700 dark:text-red-300"},
-};
-
-type FilterValue = 'all' | 'pending' | 'approved' | 'rejected' | 'review' | 'corrections';
+type FilterValue = 'all' | 'PENDIENTE' | 'APROBADO' | 'RECHAZADO' | 'EN REVISION' | 'CORRECCIONES';
 
 const StatusBadge = ({ status }: { status: UploadStatus }) => {
-  const { label, icon: Icon, color, textColor } = statusConfig[status];
+  const config = statusConfig[status];
+  if (!config) return null;
+  const { label, icon: Icon, color, textColor } = config;
   return (
     <Badge variant="outline" className={cn("gap-1.5 border-0 font-normal", color, textColor)}>
       <Icon className="h-3.5 w-3.5" />
@@ -51,49 +46,59 @@ const StatusBadge = ({ status }: { status: UploadStatus }) => {
   );
 };
 
+// We need to enrich the Upload type with the user object for rendering
+type UploadWithUser = Upload & { user?: User };
+
 export default function AdminFilesPage() {
     const firestore = useFirestore();
-    const { data: allUsers } = useCollection(useMemoFirebase(() => collection(firestore, 'users'), [firestore]));
+    const { data: allUsers } = useCollection<User>(useMemoFirebase(() => collection(firestore, 'users'), [firestore]));
     
-    // In a real app, this would be a more complex query, potentially a collection group query
-    // For now, we are using mock data for uploads
-    const [uploads, setUploads] = useState<Upload[]>(initialUploads);
+    // Use a collection group query to get all uploads from all users
+    const uploadsQuery = useMemoFirebase(() => collectionGroup(firestore, 'uploads'), [firestore]);
+    const { data: allUploads, isLoading: uploadsLoading } = useCollection<Upload>(uploadsQuery);
+
     const [isReviewDialogOpen, setReviewDialogOpen] = useState(false);
-    const [selectedUpload, setSelectedUpload] = useState<Upload | undefined>(undefined);
+    const [selectedUpload, setSelectedUpload] = useState<UploadWithUser | undefined>(undefined);
     const [activeFilter, setActiveFilter] = useState<FilterValue>('all');
     const { toast } = useToast();
 
-    const handleReviewClick = (upload: Upload) => {
+    // Enrich uploads with user data once users are loaded
+    const uploadsWithUsers = useMemo(() => {
+        if (!allUploads || !allUsers) return [];
+        return allUploads.map(upload => ({
+            ...upload,
+            user: getUserById(upload.userId, allUsers)
+        }));
+    }, [allUploads, allUsers]);
+
+    const handleReviewClick = (upload: UploadWithUser) => {
         setSelectedUpload(upload);
         setReviewDialogOpen(true);
     };
 
-    const handleUpdateStatus = (uploadId: number, estado: UploadStatus, observaciones?: string) => {
-      setUploads(currentUploads =>
-        currentUploads.map(u =>
-          u.id === uploadId ? { ...u, estado, observaciones: observaciones ?? u.observaciones } : u
-        )
-      );
-      const upload = uploads.find(u => u.id === uploadId);
+    const handleUpdateStatus = (upload: UploadWithUser, status: UploadStatus, observations?: string) => {
+      const uploadRef = doc(firestore, 'users', upload.userId, 'uploads', upload.id);
+      
+      const updateData: Partial<Upload> = { status };
+      if (observations) {
+        updateData.observations = observations;
+      }
+      if (status === 'APROBADO') {
+        updateData.acceptanceActPath = `/acts/${upload.id}.pdf`; // Dummy path
+      }
+
+      updateDocumentNonBlocking(uploadRef, updateData);
+      
       toast({
-        title: `Archivo ${estado.toLowerCase()}`,
-        description: `El archivo "${upload?.original_name}" ha sido marcado como ${estado.toLowerCase()}.`,
+        title: `Archivo ${status.toLowerCase()}`,
+        description: `El archivo "${upload.originalName}" ha sido marcado como ${status.toLowerCase()}.`,
       });
     };
 
     const filteredUploads = useMemo(() => {
-        if (activeFilter === 'all') return uploads;
-        const statusMap: Record<FilterValue, UploadStatus[]> = {
-            all: [],
-            pending: ['PENDIENTE'],
-            approved: ['APROBADO'],
-            rejected: ['RECHAZADO'],
-            review: ['EN REVISION'],
-            corrections: ['CORRECCIONES'],
-        };
-        const targetStatuses = statusMap[activeFilter];
-        return uploads.filter(upload => targetStatuses.includes(upload.estado));
-    }, [uploads, activeFilter]);
+        if (activeFilter === 'all') return uploadsWithUsers;
+        return uploadsWithUsers.filter(upload => upload.status === activeFilter);
+    }, [uploadsWithUsers, activeFilter]);
 
   return (
     <div className="container mx-auto px-0">
@@ -105,10 +110,10 @@ export default function AdminFilesPage() {
           <div className="flex items-center">
             <TabsList>
               <TabsTrigger value="all">Todos</TabsTrigger>
-              <TabsTrigger value="pending">Pendientes</TabsTrigger>
-              <TabsTrigger value="approved">Aprobados</TabsTrigger>
-              <TabsTrigger value="rejected">Rechazados</TabsTrigger>
-              <TabsTrigger value="corrections">Correcciones</TabsTrigger>
+              <TabsTrigger value="PENDIENTE">Pendientes</TabsTrigger>
+              <TabsTrigger value="APROBADO">Aprobados</TabsTrigger>
+              <TabsTrigger value="RECHAZADO">Rechazados</TabsTrigger>
+              <TabsTrigger value="CORRECCIONES">Correcciones</TabsTrigger>
             </TabsList>
             <div className="ml-auto flex items-center gap-2">
               <div className="relative ml-auto flex-1 md:grow-0">
@@ -137,26 +142,26 @@ export default function AdminFilesPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
+                    {uploadsLoading && <TableRow><TableCell colSpan={5}>Cargando...</TableCell></TableRow>}
                     {filteredUploads.map((upload) => {
-                      const user = allUsers ? getUserById(upload.user_id, allUsers) : undefined;
                       return (
                         <TableRow key={upload.id}>
                           <TableCell className="font-medium">
                             <div className="flex items-center gap-3">
                                 <FileText className="h-6 w-6 text-muted-foreground flex-shrink-0" />
                                 <div>
-                                    <div>{upload.original_name}</div>
+                                    <div>{upload.originalName}</div>
                                     <div className="text-sm text-muted-foreground sm:hidden">
-                                    {user?.nombres} {user?.apellidos}
+                                      {upload.user?.nombres} {upload.user?.apellidos}
                                     </div>
                                 </div>
                             </div>
                           </TableCell>
-                          <TableCell className="hidden sm:table-cell">{user?.nombres} {user?.apellidos}</TableCell>
+                          <TableCell className="hidden sm:table-cell">{upload.user?.nombres} {upload.user?.apellidos}</TableCell>
                           <TableCell className="hidden sm:table-cell">
-                            <StatusBadge status={upload.estado} />
+                            <StatusBadge status={upload.status} />
                           </TableCell>
-                          <TableCell className="hidden md:table-cell">{upload.fecha_subida}</TableCell>
+                          <TableCell className="hidden md:table-cell">{upload.uploadDate}</TableCell>
                           <TableCell className="text-right">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
@@ -168,8 +173,8 @@ export default function AdminFilesPage() {
                               <DropdownMenuContent align="end">
                                 <DropdownMenuLabel>Acciones</DropdownMenuLabel>
                                 <DropdownMenuItem onClick={() => handleReviewClick(upload)}>Revisar Archivo</DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleUpdateStatus(upload.id, 'APROBADO')}>Aprobar Directamente</DropdownMenuItem>
-                                <DropdownMenuItem className="text-destructive" onClick={() => handleUpdateStatus(upload.id, 'RECHAZADO')}>Rechazar</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleUpdateStatus(upload, 'APROBADO')}>Aprobar Directamente</DropdownMenuItem>
+                                <DropdownMenuItem className="text-destructive" onClick={() => handleUpdateStatus(upload, 'RECHAZADO')}>Rechazar</DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </TableCell>

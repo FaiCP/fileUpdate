@@ -19,13 +19,13 @@ export const ActaPreview = forwardRef<HTMLDivElement, ActaPreviewProps>(({ uploa
     bibliorato: index === 0 ? '2024-A' : '',
     unidad: index === 0 ? user?.departamento : '',
     serie: index === 0 ? 'Contratos' : '',
-    año: index === 0 ? new Date(upload.fecha_subida).getFullYear() : '',
-    descripcion: index === 0 ? upload.original_name : '',
+    año: index === 0 ? new Date(upload.uploadDate).getFullYear() : '',
+    descripcion: index === 0 ? upload.originalName : '',
     solicitud: index === 0 ? `SOL-${upload.id}`: '',
-    desde: index === 0 ? format(new Date(upload.fecha_subida), 'dd/MM/yyyy') : '',
+    desde: index === 0 ? format(new Date(upload.uploadDate), 'dd/MM/yyyy') : '',
     hasta: index === 0 ? format(new Date(), 'dd/MM/yyyy') : '',
     originalCopia: index === 0 ? 'Original' : '',
-    observaciones: index === 0 ? upload.observaciones || 'Ninguna' : '',
+    observaciones: index === 0 ? upload.observations || 'Ninguna' : '',
   }));
 
   return (

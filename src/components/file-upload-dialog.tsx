@@ -15,15 +15,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Upload } from "lucide-react";
+import { Upload as UploadIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import type { Upload as UploadType } from "@/lib/types";
+import type { Upload, User } from "@/lib/types";
+import { useFirestore, addDocumentNonBlocking } from "@/firebase";
+import { collection } from "firebase/firestore";
+import { format } from "date-fns";
 
 type FileUploadDialogProps = {
-    onUploadComplete: (uploadData: Omit<UploadType, 'id' | 'user_id' | 'fecha_subida' | 'estado'> & { original_name: string }) => void;
+    currentUser: User;
 };
 
-const getFileTypeFromExtension = (fileName: string): UploadType['tipo_archivo'] => {
+const getFileTypeFromExtension = (fileName: string): Upload['fileType'] => {
     const extension = fileName.split('.').pop()?.toLowerCase();
     switch (extension) {
         case 'pdf':
@@ -41,8 +44,9 @@ const getFileTypeFromExtension = (fileName: string): UploadType['tipo_archivo'] 
     }
 }
 
-export function FileUploadDialog({ onUploadComplete }: FileUploadDialogProps) {
+export function FileUploadDialog({ currentUser }: FileUploadDialogProps) {
     const { toast } = useToast();
+    const firestore = useFirestore();
     const [isOpen, setIsOpen] = useState(false);
     const [files, setFiles] = useState<FileList | null>(null);
 
@@ -59,19 +63,26 @@ export function FileUploadDialog({ onUploadComplete }: FileUploadDialogProps) {
             return;
         }
         
-        const usage = formData.get('uso') as UploadType['uso'];
-        const description = formData.get('descripcion') as string | undefined;
+        const usage = formData.get('usage') as Upload['usage'];
+        const description = formData.get('description') as string | undefined;
 
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
             const fileType = getFileTypeFromExtension(file.name);
-            const newUploadData = {
-                original_name: file.name,
-                tipo_archivo: fileType,
-                uso: usage,
-                descripcion: description,
+            const newUploadData: Omit<Upload, 'id'> = {
+                userId: currentUser.id,
+                originalName: file.name,
+                fileType: fileType,
+                usage: usage,
+                description: description,
+                uploadDate: format(new Date(), 'yyyy-MM-dd HH:mm'),
+                status: 'PENDIENTE'
             };
-            onUploadComplete(newUploadData);
+
+            // In a real app, you would also upload the file to Firebase Storage
+            // and get a download URL. Here we just create the Firestore document.
+            const uploadsCollectionRef = collection(firestore, 'users', currentUser.id, 'uploads');
+            addDocumentNonBlocking(uploadsCollectionRef, newUploadData);
         }
         
         setIsOpen(false);
@@ -88,8 +99,8 @@ export function FileUploadDialog({ onUploadComplete }: FileUploadDialogProps) {
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
                 <Button size="lg" className="text-base" onClick={() => setIsOpen(true)}>
-                <Upload className="mr-2 h-5 w-5" />
-                Subir Archivo(s)
+                    <UploadIcon className="mr-2 h-5 w-5" />
+                    Subir Archivo(s)
                 </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-2xl">
@@ -116,9 +127,9 @@ export function FileUploadDialog({ onUploadComplete }: FileUploadDialogProps) {
                         {files && <div className="text-sm text-muted-foreground">{files.length} archivo(s) seleccionado(s)</div>}
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="uso">Uso del Archivo</Label>
-                        <Select name="uso" required>
-                            <SelectTrigger id="uso">
+                        <Label htmlFor="usage">Uso del Archivo</Label>
+                        <Select name="usage" required>
+                            <SelectTrigger id="usage">
                             <SelectValue placeholder="Selecciona un uso" />
                             </SelectTrigger>
                             <SelectContent>
@@ -130,8 +141,8 @@ export function FileUploadDialog({ onUploadComplete }: FileUploadDialogProps) {
                         </Select>
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="descripcion">Descripción (Opcional)</Label>
-                        <Textarea name="descripcion" id="descripcion" placeholder="Añade una breve descripción del contenido de los archivos." />
+                        <Label htmlFor="description">Descripción (Opcional)</Label>
+                        <Textarea name="description" id="description" placeholder="Añade una breve descripción del contenido de los archivos." />
                     </div>
                     </div>
                     <DialogFooter>

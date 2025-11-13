@@ -4,21 +4,12 @@ import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContaine
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { uploads, getUserById } from "@/lib/data";
+import { getUserById } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import type { Upload, UploadStatus, User } from "@/lib/types";
 import { FileCheck2, FileClock, FileText, FileX2, Hourglass, Users as UsersIcon } from "lucide-react";
-import { subDays, format } from 'date-fns';
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection } from "firebase/firestore";
-
-const chartData = Array.from({ length: 7 }).map((_, i) => {
-    const date = subDays(new Date(), i);
-    return {
-        date: format(date, 'MMM d'),
-        uploads: Math.floor(Math.random() * 10) + 1,
-    };
-}).reverse();
+import { collection, collectionGroup, query, where, limit, orderBy } from "firebase/firestore";
 
 const statusConfig: Record<UploadStatus, { label: string; icon: React.ElementType; color: string }> = {
   PENDIENTE: { label: "Pendiente", icon: Hourglass, color: "bg-yellow-500" },
@@ -38,14 +29,37 @@ const StatusBadge = ({ status }: { status: UploadStatus }) => {
   );
 };
 
+// Chart data would ideally come from an aggregation, but we'll simulate it for now.
+const chartData = [
+  { date: 'Jun 1', uploads: 5 }, { date: 'Jun 2', uploads: 8 }, { date: 'Jun 3', uploads: 3 },
+  { date: 'Jun 4', uploads: 10 }, { date: 'Jun 5', uploads: 6 }, { date: 'Jun 6', uploads: 12 },
+  { date: 'Jun 7', uploads: 7 },
+];
+
 export function DashboardAdmin() {
     const firestore = useFirestore();
-    const { data: users, isLoading: usersLoading } = useCollection<User>(useMemoFirebase(() => collection(firestore, 'users'), [firestore]));
+    
+    // Get all users
+    const { data: users, isLoading: usersLoading } = useCollection<User>(
+        useMemoFirebase(() => collection(firestore, 'users'), [firestore])
+    );
+    
+    // Get all uploads
+    const uploadsQuery = useMemoFirebase(() => collectionGroup(firestore, 'uploads'), [firestore]);
+    const { data: allUploads, isLoading: uploadsLoading } = useCollection<Upload>(uploadsQuery);
+    
+    // Get recent uploads
+    const recentUploadsQuery = useMemoFirebase(() => 
+        query(collectionGroup(firestore, 'uploads'), orderBy('uploadDate', 'desc'), limit(5)),
+        [firestore]
+    );
+    const { data: recentUploadsData, isLoading: recentUploadsLoading } = useCollection<Upload>(recentUploadsQuery);
 
-    const recentUploads = uploads.slice(0, 5).map(u => ({ ...u, user: users ? getUserById(u.user_id, users) : undefined }));
-    const pendingCount = uploads.filter(u => u.estado === 'PENDIENTE').length;
-    const approvedCount = uploads.filter(u => u.estado === 'APROBADO').length;
-    const activeUsersCount = users?.filter(u => u.activo).length || 0;
+    const recentUploads = (recentUploadsData && users) ? recentUploadsData.map(u => ({ ...u, user: getUserById(u.userId, users) })) : [];
+
+    const pendingCount = allUploads?.filter(u => u.status === 'PENDIENTE').length ?? 0;
+    const approvedCount = allUploads?.filter(u => u.status === 'APROBADO').length ?? 0;
+    const activeUsersCount = users?.filter(u => u.activo).length ?? 0;
 
   return (
     <div className="space-y-6">
@@ -56,7 +70,7 @@ export function DashboardAdmin() {
             <Hourglass className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{pendingCount}</div>
+            <div className="text-2xl font-bold">{uploadsLoading ? '...' : pendingCount}</div>
             <p className="text-xs text-muted-foreground">Esperando revisión</p>
           </CardContent>
         </Card>
@@ -66,7 +80,7 @@ export function DashboardAdmin() {
             <FileCheck2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{approvedCount}</div>
+            <div className="text-2xl font-bold">{uploadsLoading ? '...' : approvedCount}</div>
             <p className="text-xs text-muted-foreground">Actas generadas este mes</p>
           </CardContent>
         </Card>
@@ -76,7 +90,7 @@ export function DashboardAdmin() {
             <UsersIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{activeUsersCount}</div>
+            <div className="text-2xl font-bold">{usersLoading ? '...' : activeUsersCount}</div>
             <p className="text-xs text-muted-foreground">Total de usuarios en el sistema</p>
           </CardContent>
         </Card>
@@ -122,12 +136,13 @@ export function DashboardAdmin() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
+                      {recentUploadsLoading && <TableRow><TableCell colSpan={3}>Cargando...</TableCell></TableRow>}
                         {recentUploads.map(upload => (
                             <TableRow key={upload.id}>
-                                <TableCell className="font-medium truncate max-w-[120px]">{upload.original_name}</TableCell>
+                                <TableCell className="font-medium truncate max-w-[120px]">{upload.originalName}</TableCell>
                                 <TableCell>{upload.user?.nombres}</TableCell>
                                 <TableCell className="text-right">
-                                    <StatusBadge status={upload.estado} />
+                                    <StatusBadge status={upload.status} />
                                 </TableCell>
                             </TableRow>
                         ))}
