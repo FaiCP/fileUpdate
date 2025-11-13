@@ -1,12 +1,14 @@
 "use client";
 
-import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import React from "react";
+import { useUser, useFirestore } from "@/firebase";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { SidebarNav } from "@/components/sidebar-nav";
 import { UserNav } from "@/components/user-nav";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { doc } from "firebase/firestore";
 import { useDoc } from "@/firebase/firestore/use-doc";
+import { useMemoFirebase } from "@/firebase/provider";
 import type { User } from "@/lib/types";
 
 export default function MainLayout({
@@ -14,7 +16,7 @@ export default function MainLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const { user: authUser, isUserLoading } = useUser();
+  const { user: authUser, isUserLoading: isAuthLoading } = useUser();
   const firestore = useFirestore();
 
   const userDocRef = useMemoFirebase(() => {
@@ -24,18 +26,20 @@ export default function MainLayout({
 
   const { data: currentUser, isLoading: isUserDocLoading } = useDoc<User>(userDocRef);
 
-  if (isUserLoading || isUserDocLoading) {
-    // You can render a loading skeleton here
-    return <div>Loading...</div>;
+  const isLoading = isAuthLoading || (authUser && isUserDocLoading);
+
+  if (isLoading) {
+    // Render a loading state while waiting for auth state or user document.
+    return <div>Loading user data...</div>;
   }
   
-  if (!currentUser) {
-    // This can happen if the user is authenticated but their document doesn't exist in Firestore yet.
-    // Or if the user is not authenticated. Redirecting to login might be appropriate.
-    // For now, let's just show a message. In a real app, you'd redirect.
+  if (!authUser || !currentUser) {
+    // If after loading, there's no authenticated user or no corresponding Firestore document,
+    // then it's safe to redirect.
      if (typeof window !== 'undefined') {
       window.location.href = '/';
     }
+    // Return null to prevent rendering children during redirect.
     return null;
   }
 
