@@ -25,9 +25,10 @@ type UserAddDialogProps = {
   setIsOpen: (open: boolean) => void;
   onSave: (user: UserData, userId?: string) => void;
   user?: User;
+  isFirstUser?: boolean;
 };
 
-export function UserAddDialog({ isOpen, setIsOpen, onSave, user }: UserAddDialogProps) {
+export function UserAddDialog({ isOpen, setIsOpen, onSave, user, isFirstUser = false }: UserAddDialogProps) {
     const auth = useAuth();
     const { toast } = useToast();
     const [formData, setFormData] = useState<Partial<UserData>>({});
@@ -45,13 +46,14 @@ export function UserAddDialog({ isOpen, setIsOpen, onSave, user }: UserAddDialog
             });
             setPassword(''); // Clear password for existing user edit
         } else {
+            // If it's the first user, default the role to admin.
             setFormData({
-                rol: 'user',
+                rol: isFirstUser ? 'admin' : 'user',
                 departamento: 'Recursos Humanos',
             });
             setPassword('');
         }
-    }, [user, isOpen]);
+    }, [user, isOpen, isFirstUser]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { id, value } = e.target;
@@ -104,9 +106,9 @@ export function UserAddDialog({ isOpen, setIsOpen, onSave, user }: UserAddDialog
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle className="font-headline text-2xl">{user ? 'Editar Usuario' : 'Añadir Nuevo Usuario'}</DialogTitle>
+          <DialogTitle className="font-headline text-2xl">{user ? 'Editar Usuario' : isFirstUser ? 'Crear Primer Administrador' : 'Añadir Nuevo Usuario'}</DialogTitle>
           <DialogDescription>
-            {user ? 'Modifica la información del usuario.' : 'Completa la información para crear una nueva cuenta en el sistema.'}
+            {user ? 'Modifica la información del usuario.' : isFirstUser ? 'Este será el primer usuario administrador del sistema.' : 'Completa la información para crear una nueva cuenta en el sistema.'}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
@@ -114,16 +116,16 @@ export function UserAddDialog({ isOpen, setIsOpen, onSave, user }: UserAddDialog
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div className="space-y-2">
                         <Label htmlFor="nombres">Nombres</Label>
-                        <Input id="nombres" placeholder="Ej: Juan" required value={formData.nombres || ''} onChange={handleChange} />
+                        <Input id="nombres" placeholder="Ej: Ana" required value={formData.nombres || ''} onChange={handleChange} />
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="apellidos">Apellidos</Label>
-                        <Input id="apellidos" placeholder="Ej: Pérez" required value={formData.apellidos || ''} onChange={handleChange} />
+                        <Input id="apellidos" placeholder="Ej: García" required value={formData.apellidos || ''} onChange={handleChange} />
                     </div>
                 </div>
                  <div className="space-y-2">
                     <Label htmlFor="email">Correo Electrónico</Label>
-                    <Input id="email" type="email" placeholder="Ej: juan.perez@institucion.com" required value={formData.email || ''} onChange={handleChange} disabled={!!user}/>
+                    <Input id="email" type="email" placeholder="Ej: ana.garcia@institucion.com" required value={formData.email || ''} onChange={handleChange} disabled={!!user}/>
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="cedula">Cédula</Label>
@@ -147,7 +149,7 @@ export function UserAddDialog({ isOpen, setIsOpen, onSave, user }: UserAddDialog
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="rol">Rol</Label>
-                        <Select name="rol" required value={formData.rol || ''} onValueChange={(value) => handleSelectChange('rol', value)}>
+                        <Select name="rol" required value={formData.rol || ''} onValueChange={(value) => handleSelectChange('rol', value)} disabled={isFirstUser}>
                             <SelectTrigger id="rol">
                             <SelectValue placeholder="Selecciona un rol" />
                             </SelectTrigger>

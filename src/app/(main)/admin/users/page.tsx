@@ -64,6 +64,12 @@ export default function AdminUsersPage() {
         avatarUrl: `https://picsum.photos/seed/${Math.random()}/100/100`,
       };
       setDocumentNonBlocking(newUserRef, newUser, { merge: true });
+
+      // If it's an admin, add to the roles collection
+      if (newUser.rol === 'admin') {
+        const adminRoleRef = doc(firestore, "roles_admin", newUserId);
+        setDocumentNonBlocking(adminRoleRef, { grantedAt: new Date() }, { merge: true });
+      }
     }
   };
 
@@ -87,6 +93,9 @@ export default function AdminUsersPage() {
       user.email.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [users, searchTerm]);
+
+  // Determine if this will be the first user
+  const isFirstUser = !isLoading && (!users || users.length === 0);
 
   return (
     <div className="container mx-auto px-0">
@@ -119,6 +128,7 @@ export default function AdminUsersPage() {
         setIsOpen={handleCloseDialog}
         onSave={handleSaveUser}
         user={editingUser}
+        isFirstUser={isFirstUser}
       />
 
       <Card>
