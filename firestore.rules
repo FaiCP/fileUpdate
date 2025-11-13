@@ -38,14 +38,15 @@ service cloud.firestore {
         return exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
       }
 
-      // Allow a user to create their own profile if the UID matches.
+      // Allow a user to create their own profile if the UID matches and the document is being created.
+      // This is crucial for the initial user seeding to work.
       allow create: if isOwner(userId) && request.resource.data.id == request.auth.uid;
 
       // Allow the user to get, update, and delete their own profile, or if they are an admin.
       allow get, update, delete: if isOwner(userId) || isAdmin();
 
-      // Prevent listing of all users.
-      allow list: if false;
+      // Prevent listing of all users unless they are an admin
+      allow list: if isAdmin();
     }
 
     /**

@@ -28,16 +28,18 @@ import { UserAddDialog } from "@/components/user-add-dialog";
 import type { User } from "@/lib/types";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, doc } from "firebase/firestore";
-import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { setDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { useToast } from "@/hooks/use-toast";
 
 export default function AdminUsersPage() {
   const firestore = useFirestore();
-  const usersCollectionRef = useMemoFirebase(() => collection(firestore, 'users'), [firestore]);
+  const usersCollectionRef = useMemoFirebase(() => firestore ? collection(firestore, 'users') : null, [firestore]);
   const { data: users, isLoading } = useCollection<User>(usersCollectionRef);
   
   const [isUserDialogOpen, setUserDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | undefined>(undefined);
   const [searchTerm, setSearchTerm] = useState("");
+  const { toast } = useToast();
 
   const handleOpenDialog = (user?: User) => {
     setEditingUser(user);
@@ -50,41 +52,60 @@ export default function AdminUsersPage() {
   };
 
   const handleSaveUser = (userData: Omit<User, 'id' | 'avatarUrl' | 'activo'>, newUserId?: string) => {
+    if (!firestore) return;
+    
     if (editingUser) {
       // Edit existing user
       const userRef = doc(firestore, "users", editingUser.id);
-      setDocumentNonBlocking(userRef, userData, { merge: true });
+      updateDocumentNonBlocking(userRef, userData);
+      toast({ title: "Usuario actualizado", description: `Los datos de ${userData.nombres} se han guardado.` });
+
     } else if (newUserId) {
       // Add new user (the auth part is handled in the dialog)
       const newUserRef = doc(firestore, "users", newUserId);
-      const newUser: Partial<User> = {
-        ...userData,
+      const newUser: User = {
+        ...(userData as User),
         id: newUserId,
         activo: true,
         avatarUrl: `https://picsum.photos/seed/${newUserId}/100/100`,
       };
-      setDocumentNonBlocking(newUserRef, newUser, { merge: true });
+      setDocumentNonBlocking(newUserRef, newUser, { merge: false });
 
       // If it's an admin, add to the roles collection
       if (newUser.rol === 'admin') {
         const adminRoleRef = doc(firestore, "roles_admin", newUserId);
         setDocumentNonBlocking(adminRoleRef, { grantedAt: new Date() }, { merge: true });
       }
+      toast({ title: "Usuario creado", description: `El usuario ${userData.nombres} ha sido añadido.` });
     }
   };
 
   const toggleUserStatus = (user: User) => {
+    if (!firestore) return;
     const userRef = doc(firestore, "users", user.id);
-    setDocumentNonBlocking(userRef, { activo: !user.activo }, { merge: true });
+    updateDocumentNonBlocking(userRef, { activo: !user.activo });
+    toast({ title: "Estado cambiado", description: `El usuario ahora está ${!user.activo ? 'activo' : 'inactivo'}.` });
   };
   
   const promoteToAdmin = (user: User) => {
+    if (!firestore) return;
     const userRef = doc(firestore, "users", user.id);
-    setDocumentNonBlocking(userRef, { rol: 'admin' }, { merge: true });
+    updateDocumentNonBlocking(userRef, { rol: 'admin' });
     // Also add to roles_admin collection for security rule check
     const adminRoleRef = doc(firestore, "roles_admin", user.id);
     setDocumentNonBlocking(adminRoleRef, { grantedAt: new Date() }, { merge: true });
+    toast({ title: "Usuario promovido", description: `${user.nombres} ahora es administrador.` });
   };
+  
+  const demoteToUser = (user: User) => {
+    if (!firestore) return;
+    const userRef = doc(firestore, "users", user.id);
+    updateDocumentNonBlocking(userRef, { rol: 'user' });
+    const adminRoleRef = doc(firestore, "roles_admin", user.id);
+    deleteDocumentNonBlocking(adminRoleRef);
+    toast({ title: "Usuario degradado", description: `${user.nombres} ahora es un usuario estándar.` });
+  };
+
 
   const filteredUsers = useMemo(() => {
     if (!users) return [];
@@ -186,14 +207,17 @@ export default function AdminUsersPage() {
                         <DropdownMenuItem className={user.activo ? "text-destructive" : ""} onClick={() => toggleUserStatus(user)}>
                           {user.activo ? "Desactivar" : "Activar"}
                         </DropdownMenuItem>
-                         {user.rol !== 'admin' && (
-                          <>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => promoteToAdmin(user)}>
-                              <UserCog className="mr-2 h-4 w-4" />
-                              Hacer Administrador
-                            </DropdownMenuItem>
-                          </>
+                         <DropdownMenuSeparator />
+                        {user.rol === 'admin' ? (
+                          <DropdownMenuItem onClick={() => demoteToUser(user)}>
+                            <UserCog className="mr-2 h-4 w-4" />
+                            Hacer Usuario
+                          </DropdownMenuItem>
+                        ) : (
+                          <DropdownMenuItem onClick={() => promoteToAdmin(user)}>
+                            <UserCog className="mr-2 h-4 w-4" />
+                            Hacer Administrador
+                          </DropdownMenuItem>
                         )}
                       </DropdownMenuContent>
                     </DropdownMenu>
