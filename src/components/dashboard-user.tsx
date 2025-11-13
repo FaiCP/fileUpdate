@@ -11,7 +11,7 @@ import type { Upload, UploadStatus, User } from "@/lib/types";
 import { FileUploadDialog } from "@/components/file-upload-dialog";
 import { cn } from "@/lib/utils";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, query, where, orderBy, limit } from "firebase/firestore";
+import { collection, query, orderBy, limit } from "firebase/firestore";
 
 const statusConfig: Record<UploadStatus, { label: string; icon: React.ElementType; color: string }> = {
   PENDIENTE: { label: "Pendiente", icon: Hourglass, color: "bg-yellow-500" },
@@ -40,13 +40,13 @@ export function DashboardUser({ currentUser }: DashboardUserProps) {
   const dummyPdfUrl = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf";
 
   const recentUploadsQuery = useMemoFirebase(() => {
-    if (!firestore || !currentUser) return null;
+    if (!firestore || !currentUser?.id) return null;
     return query(
       collection(firestore, 'users', currentUser.id, 'uploads'),
       orderBy('uploadDate', 'desc'),
       limit(5)
     );
-  }, [firestore, currentUser]);
+  }, [firestore, currentUser.id]);
 
   const { data: recentUploads, isLoading } = useCollection<Upload>(recentUploadsQuery);
 
@@ -78,8 +78,15 @@ export function DashboardUser({ currentUser }: DashboardUserProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading && <TableRow><TableCell colSpan={4}>Cargando...</TableCell></TableRow>}
-              {recentUploads && recentUploads.map((upload) => (
+              {isLoading && <TableRow><TableCell colSpan={4} className="text-center">Cargando historial...</TableCell></TableRow>}
+              {!isLoading && (!recentUploads || recentUploads.length === 0) && (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center text-muted-foreground py-10">
+                    Aún no has subido ningún archivo.
+                  </TableCell>
+                </TableRow>
+              )}
+              {!isLoading && recentUploads && recentUploads.map((upload) => (
                 <TableRow key={upload.id}>
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-3">
