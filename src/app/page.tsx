@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { FileArchive, LogIn } from 'lucide-react';
+import { FileArchive, LogIn, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -20,31 +20,63 @@ export default function LoginPage() {
   const firestore = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
+  
   const [email, setEmail] = useState('ana.garcia@institucion.com');
   const [password, setPassword] = useState('password');
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSeeding, setIsSeeding] = useState(true);
+  const [needsSeeding, setNeedsSeeding] = useState(false);
   const [seedSuccess, setSeedSuccess] = useState(false);
+  const [isCreatingAdmin, setIsCreatingAdmin] = useState(false);
 
-  useEffect(() => {
-    const seedInitialUser = async () => {
+  // Check if the database is empty and seed if necessary
+  const checkAndSeedDb = useCallback(async () => {
       if (!firestore || !auth) return;
-
+      setIsSeeding(true);
       try {
         const usersCollection = collection(firestore, 'users');
         const userSnapshot = await getDocs(usersCollection);
-
         if (userSnapshot.empty) {
-          // No users exist, let's create the initial admin user.
-          const adminEmail = 'ana.garcia@institucion.com';
-          const adminPassword = 'password';
+          setNeedsSeeding(true);
+        } else {
+          setNeedsSeeding(false);
+        }
+      } catch (error) {
+        console.error("Error checking database status:", error);
+        // Assume seeding is needed if check fails, could be due to rules on an empty DB
+        setNeedsSeeding(true);
+      } finally {
+        setIsSeeding(false);
+      }
+  }, [firestore, auth]);
 
-          // 1. Create Auth user
-          const userCredential = await createUserWithEmailAndPassword(auth, adminEmail, adminPassword);
-          const newUserId = userCredential.user.uid;
+  useEffect(() => {
+    checkAndSeedDb();
+  }, [checkAndSeedDb]);
 
-          // 2. Create Firestore user document
-          const newUser: User = {
+
+  const handleCreateAdmin = async () => {
+    if (!firestore || !auth) {
+        toast({ title: "Error", description: "Servicios de Firebase no disponibles.", variant: "destructive"});
+        return;
+    };
+    
+    setIsCreatingAdmin(true);
+    
+    try {
+        const adminEmail = 'ana.garcia@institucion.com';
+        const adminPassword = 'password';
+
+        // 1. Create Auth user
+        const userCredential = await createUserWithEmailAndPassword(auth, adminEmail, adminPassword);
+        const newUserId = userCredential.user.uid;
+
+        // 2. Prepare batch write for Firestore
+        const batch = writeBatch(firestore);
+
+        // 3. Create Firestore user document
+        const newUser: User = {
             id: newUserId,
             nombres: 'Ana',
             apellidos: 'García (Admin)',
@@ -54,31 +86,33 @@ export default function LoginPage() {
             rol: 'admin',
             activo: true,
             avatarUrl: `https://picsum.photos/seed/${newUserId}/100/100`,
-          };
-          
-          const batch = writeBatch(firestore);
-          const userRef = doc(firestore, "users", newUserId);
-          batch.set(userRef, newUser);
+        };
+        const userRef = doc(firestore, "users", newUserId);
+        batch.set(userRef, newUser);
 
-          // 3. Create admin role document
-          const adminRoleRef = doc(firestore, "roles_admin", newUserId);
-          batch.set(adminRoleRef, { grantedAt: new Date() });
+        // 4. Create admin role document
+        const adminRoleRef = doc(firestore, "roles_admin", newUserId);
+        batch.set(adminRoleRef, { grantedAt: new Date().toISOString() });
 
-          await batch.commit();
-          setSeedSuccess(true);
+        // 5. Commit batch
+        await batch.commit();
+        
+        setSeedSuccess(true);
+        setNeedsSeeding(false);
+        toast({ title: "¡Administrador Creado!", description: "Ya puedes iniciar sesión con las credenciales por defecto."});
+
+    } catch (error: any) {
+        console.error("Error creating admin user:", error);
+        let errorMessage = "Ocurrió un error al crear el administrador.";
+        if (error.code === 'auth/email-already-in-use') {
+            errorMessage = "El usuario administrador ya existe en Autenticación, pero la base de datos estaba vacía. Inicia sesión.";
+            setNeedsSeeding(false); // User exists, no need to show the button anymore
         }
-      } catch (error: any) {
-         // This might happen if user exists in Auth but not Firestore, or vice-versa.
-         // Or on hot-reloads. We can ignore it for this seeding purpose.
-        console.warn("Seeding warning (can be ignored on dev hot reloads):", error.message);
-      } finally {
-        setIsSeeding(false);
-      }
-    };
-    
-    seedInitialUser();
-  }, [firestore, auth]);
-
+        toast({ title: "Error", description: errorMessage, variant: "destructive"});
+    } finally {
+        setIsCreatingAdmin(false);
+    }
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,7 +168,18 @@ export default function LoginPage() {
           </CardHeader>
           <CardContent>
             {isSeeding ? (
-                <div className="text-center text-muted-foreground">Inicializando sistema...</div>
+                <div className="text-center text-muted-foreground py-10">Verificando base de datos...</div>
+            ) : needsSeeding ? (
+                <div className="flex flex-col items-center justify-center text-center p-4 border-2 border-dashed rounded-lg">
+                    <CardTitle className="text-xl">Bienvenido</CardTitle>
+                    <CardDescription className="mt-2 mb-4">
+                        Parece que es la primera vez que se ejecuta la aplicación. Crea el usuario administrador para empezar.
+                    </CardDescription>
+                    <Button onClick={handleCreateAdmin} disabled={isCreatingAdmin}>
+                        <UserPlus className="mr-2 h-5 w-5" />
+                        {isCreatingAdmin ? 'Creando...' : 'Crear Administrador Inicial'}
+                    </Button>
+                </div>
             ) : (
                 <>
                 {seedSuccess && (
