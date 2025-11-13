@@ -4,14 +4,12 @@ import * as React from "react";
 import { DashboardAdmin } from "@/components/dashboard-admin";
 import { DashboardUser } from "@/components/dashboard-user";
 import { PageHeader } from "@/components/page-header";
-import type { User } from "@/lib/types";
+import { useCurrentUser } from "@/context/UserContext";
 
-// This component now expects `currentUser` to be passed as a prop from MainLayout.
-type DashboardPageProps = {
-  currentUser?: User;
-};
+export default function DashboardPage() {
+  // Consume the user data from the context
+  const currentUser = useCurrentUser();
 
-export default function DashboardPage({ currentUser }: DashboardPageProps) {
   // If for some reason currentUser is not available, show a loading/error state.
   if (!currentUser) {
     return (

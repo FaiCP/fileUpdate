@@ -9,6 +9,7 @@ import { UserNav } from "@/components/user-nav";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { doc, getDoc } from "firebase/firestore";
 import type { User } from "@/lib/types";
+import { UserContext } from "@/context/UserContext";
 
 export default function MainLayout({
   children,
@@ -23,24 +24,19 @@ export default function MainLayout({
   const [layoutState, setLayoutState] = useState<'loading' | 'authenticated' | 'unauthenticated'>('loading');
 
   useEffect(() => {
-    console.log("MainLayout Effect Triggered. Auth Loading:", isAuthLoading, "Auth User:", authUser);
-
     if (isAuthLoading) {
-      console.log("State -> loading (isAuthLoading is true)");
       setLayoutState('loading');
       return;
     }
 
     if (!authUser) {
-      console.log("State -> unauthenticated (no authUser)");
       setLayoutState('unauthenticated');
       router.replace('/');
       return;
     }
 
-    // Auth user exists, try to fetch Firestore profile
+    // Auth user exists, try to fetch Firestore profile if not already fetched
     if (authUser && !currentUser) {
-      console.log(`Fetching Firestore document for user: ${authUser.uid}`);
       const fetchUserDocument = async () => {
         const userDocRef = doc(firestore, 'users', authUser.uid);
         try {
@@ -48,13 +44,12 @@ export default function MainLayout({
 
           if (userDocSnap.exists()) {
             const userData = userDocSnap.data() as User;
-            console.log("Firestore document found:", userData);
             setCurrentUser(userData);
-            console.log("State -> authenticated");
             setLayoutState('authenticated');
           } else {
             console.error("CRITICAL: User document not found in Firestore for authenticated user:", authUser.uid);
             setLayoutState('unauthenticated');
+            // Optionally, sign out the user here if their DB record is missing
             router.replace('/');
           }
         } catch (error) {
@@ -67,7 +62,6 @@ export default function MainLayout({
       fetchUserDocument();
     } else if (authUser && currentUser) {
         // This case handles if the effect runs again when everything is already loaded
-        console.log("State -> authenticated (already loaded)");
         setLayoutState('authenticated');
     }
   }, [isAuthLoading, authUser, currentUser, firestore, router]);
@@ -77,7 +71,7 @@ export default function MainLayout({
   if (layoutState === 'loading' || !currentUser) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
-        <div>Cargando datos de usuario... (Estado: {layoutState})</div>
+        <div>Cargando datos de usuario...</div>
       </div>
     );
   }
@@ -94,26 +88,21 @@ export default function MainLayout({
 
   // If we are authenticated and have the user data, render the full layout.
   return (
-    <SidebarProvider>
-      <SidebarNav user={currentUser} />
-      <SidebarInset className="flex flex-col">
-        <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b bg-background/80 px-4 backdrop-blur-sm sm:px-6">
-            <SidebarTrigger />
-            <div className="flex items-center gap-4">
-               <UserNav user={currentUser} />
-            </div>
-        </header>
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6">
-            {/* Clone the child element and pass the currentUser prop */}
-            {React.Children.map(children, child => {
-              if (React.isValidElement(child)) {
-                // @ts-ignore
-                return React.cloneElement(child, { currentUser });
-              }
-              return child;
-            })}
-        </main>
-      </SidebarInset>
-    </SidebarProvider>
+    <UserContext.Provider value={currentUser}>
+      <SidebarProvider>
+        <SidebarNav user={currentUser} />
+        <SidebarInset className="flex flex-col">
+          <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b bg-background/80 px-4 backdrop-blur-sm sm:px-6">
+              <SidebarTrigger />
+              <div className="flex items-center gap-4">
+                <UserNav user={currentUser} />
+              </div>
+          </header>
+          <main className="flex-1 overflow-y-auto p-4 sm:p-6">
+              {children}
+          </main>
+        </SidebarInset>
+      </SidebarProvider>
+    </UserContext.Provider>
   );
 }
