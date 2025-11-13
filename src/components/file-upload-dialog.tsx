@@ -26,37 +26,43 @@ type FileUploadDialogProps = {
 export function FileUploadDialog({ onUploadComplete }: FileUploadDialogProps) {
     const { toast } = useToast();
     const [isOpen, setIsOpen] = useState(false);
-    const [file, setFile] = useState<File | null>(null);
+    const [files, setFiles] = useState<FileList | null>(null);
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         const formData = new FormData(e.currentTarget);
         
-        if (!file) {
+        if (!files || files.length === 0) {
             toast({
                 variant: "destructive",
                 title: "Error",
-                description: "Por favor, selecciona un archivo para subir.",
+                description: "Por favor, selecciona al menos un archivo para subir.",
             });
             return;
         }
 
-        const newUploadData = {
-            original_name: file.name,
-            tipo_archivo: formData.get('tipo_archivo') as UploadType['tipo_archivo'],
-            uso: formData.get('uso') as UploadType['uso'],
-            descripcion: formData.get('descripcion') as string | undefined,
-        };
+        const fileType = formData.get('tipo_archivo') as UploadType['tipo_archivo'];
+        const usage = formData.get('uso') as UploadType['uso'];
+        const description = formData.get('descripcion') as string | undefined;
 
-        onUploadComplete(newUploadData);
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const newUploadData = {
+                original_name: file.name,
+                tipo_archivo: fileType,
+                uso: usage,
+                descripcion: description,
+            };
+            onUploadComplete(newUploadData);
+        }
         
         setIsOpen(false);
-        setFile(null);
+        setFiles(null);
         (e.target as HTMLFormElement).reset();
 
         toast({
-            title: "Archivo Subido",
-            description: "Tu archivo se ha subido y está pendiente de revisión.",
+            title: `Archivos Subidos (${files.length})`,
+            description: `Tus archivos se han subido y están pendientes de revisión.`,
         });
     }
 
@@ -65,29 +71,31 @@ export function FileUploadDialog({ onUploadComplete }: FileUploadDialogProps) {
       <DialogTrigger asChild>
         <Button size="lg" className="text-base" onClick={() => setIsOpen(true)}>
           <Upload className="mr-2 h-5 w-5" />
-          Subir Archivo
+          Subir Archivo(s)
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle className="font-headline text-2xl">Subir Nuevo Archivo</DialogTitle>
+          <DialogTitle className="font-headline text-2xl">Subir Nuevos Archivos</DialogTitle>
           <DialogDescription>
-            Completa los detalles y adjunta tu archivo. Será revisado por un administrador.
+            Completa los detalles y adjunta tus archivos. Serán revisados por un administrador.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
             <div className="grid gap-6 py-4">
             <div className="grid grid-cols-1 items-center gap-4">
                 <Label htmlFor="file-upload" className="font-medium">
-                Archivo
+                Archivos
                 </Label>
                 <Input 
                     id="file-upload" 
                     type="file" 
                     required 
+                    multiple
                     className="text-foreground" 
-                    onChange={(e) => setFile(e.target.files ? e.target.files[0] : null)}
+                    onChange={(e) => setFiles(e.target.files)}
                 />
+                 {files && <div className="text-sm text-muted-foreground">{files.length} archivo(s) seleccionado(s)</div>}
             </div>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="space-y-2">
@@ -110,7 +118,7 @@ export function FileUploadDialog({ onUploadComplete }: FileUploadDialogProps) {
                      <Select name="uso" required>
                         <SelectTrigger id="uso">
                         <SelectValue placeholder="Selecciona un uso" />
-                        </SelectTrigger>
+                        </Trigger>
                         <SelectContent>
                         <SelectItem value="acta">Acta</SelectItem>
                         <SelectItem value="contrato">Contrato</SelectItem>
@@ -122,7 +130,7 @@ export function FileUploadDialog({ onUploadComplete }: FileUploadDialogProps) {
             </div>
             <div className="space-y-2">
                 <Label htmlFor="descripcion">Descripción (Opcional)</Label>
-                <Textarea name="descripcion" id="descripcion" placeholder="Añade una breve descripción del contenido del archivo." />
+                <Textarea name="descripcion" id="descripcion" placeholder="Añade una breve descripción del contenido de los archivos." />
             </div>
             </div>
             <DialogFooter>
