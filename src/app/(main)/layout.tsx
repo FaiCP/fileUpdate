@@ -23,48 +23,71 @@ export default function MainLayout({
   const [layoutState, setLayoutState] = useState<'loading' | 'authenticated' | 'unauthenticated'>('loading');
 
   useEffect(() => {
-    // If Firebase auth is still loading, we are in a loading state.
+    console.log("MainLayout Effect Triggered. Auth Loading:", isAuthLoading, "Auth User:", authUser);
+
     if (isAuthLoading) {
+      console.log("State -> loading (isAuthLoading is true)");
       setLayoutState('loading');
       return;
     }
 
-    // If Firebase auth is done loading and there's no authenticated user,
-    // it's an unauthenticated state, so we should redirect.
     if (!authUser) {
+      console.log("State -> unauthenticated (no authUser)");
       setLayoutState('unauthenticated');
       router.replace('/');
       return;
     }
 
-    // If we have an authenticated user but haven't fetched their Firestore profile yet.
+    // Auth user exists, try to fetch Firestore profile
     if (authUser && !currentUser) {
+      console.log(`Fetching Firestore document for user: ${authUser.uid}`);
       const fetchUserDocument = async () => {
         const userDocRef = doc(firestore, 'users', authUser.uid);
-        const userDocSnap = await getDoc(userDocRef);
+        try {
+          const userDocSnap = await getDoc(userDocRef);
 
-        if (userDocSnap.exists()) {
-          setCurrentUser(userDocSnap.data() as User);
-          setLayoutState('authenticated');
-        } else {
-          // The user is authenticated, but their profile doesn't exist in Firestore.
-          // This is an error state, redirect to login to be safe.
-          console.error("Error: User document not found for authenticated user.");
-          setLayoutState('unauthenticated');
-          router.replace('/');
+          if (userDocSnap.exists()) {
+            const userData = userDocSnap.data() as User;
+            console.log("Firestore document found:", userData);
+            setCurrentUser(userData);
+            console.log("State -> authenticated");
+            setLayoutState('authenticated');
+          } else {
+            console.error("CRITICAL: User document not found in Firestore for authenticated user:", authUser.uid);
+            setLayoutState('unauthenticated');
+            router.replace('/');
+          }
+        } catch (error) {
+           console.error("CRITICAL: Error fetching user document from Firestore:", error);
+           setLayoutState('unauthenticated');
+           router.replace('/');
         }
       };
 
       fetchUserDocument();
+    } else if (authUser && currentUser) {
+        // This case handles if the effect runs again when everything is already loaded
+        console.log("State -> authenticated (already loaded)");
+        setLayoutState('authenticated');
     }
   }, [isAuthLoading, authUser, currentUser, firestore, router]);
 
 
   // Render based on the layout state
-  if (layoutState === 'loading' || layoutState === 'unauthenticated' || !currentUser) {
+  if (layoutState === 'loading' || !currentUser) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
-        <div>Cargando datos de usuario...</div>
+        <div>Cargando datos de usuario... (Estado: {layoutState})</div>
+      </div>
+    );
+  }
+  
+  if (layoutState === 'unauthenticated') {
+    // This state is brief as the effect should redirect.
+    // Showing a loading indicator is better than a flash of a broken page.
+     return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <div>Redirigiendo a la página de inicio de sesión...</div>
       </div>
     );
   }
