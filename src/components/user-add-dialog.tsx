@@ -15,8 +15,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import type { User } from "@/lib/types";
-import { useAuth } from "@/firebase";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { initializeApp, deleteApp } from "firebase/app";
+import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
+import { firebaseConfig } from "@/firebase/config";
+
 
 type UserData = Omit<User, 'id' | 'avatarUrl' | 'activo'>;
 
@@ -28,7 +30,6 @@ type UserAddDialogProps = {
 };
 
 export function UserAddDialog({ isOpen, setIsOpen, onSave, user }: UserAddDialogProps) {
-    const auth = useAuth();
     const { toast } = useToast();
     const [formData, setFormData] = useState<Partial<UserData>>({});
     const [password, setPassword] = useState('');
@@ -84,13 +85,23 @@ export function UserAddDialog({ isOpen, setIsOpen, onSave, user }: UserAddDialog
             if (user) {
                 // Editing user - no auth changes here, just Firestore
                 onSave(formData as UserData);
-            } else if (auth && formData.email) {
-                // Creating new user
-                const userCredential = await createUserWithEmailAndPassword(auth, formData.email, password);
-                const newUserId = userCredential.user.uid;
-                onSave(formData as UserData, newUserId);
+            } else if (formData.email) {
+                // Creating new user in an isolated auth instance
+                const tempAppName = `temp-user-creation-${Date.now()}`;
+                const tempApp = initializeApp(firebaseConfig, tempAppName);
+                const tempAuth = getAuth(tempApp);
+
+                try {
+                    const userCredential = await createUserWithEmailAndPassword(tempAuth, formData.email, password);
+                    const newUserId = userCredential.user.uid;
+                    onSave(formData as UserData, newUserId);
+                } finally {
+                    // Clean up the temporary app instance
+                    await deleteApp(tempApp);
+                }
+
             } else {
-                throw new Error("El servicio de autenticación no está disponible o falta el email.");
+                throw new Error("El email es requerido para crear un usuario.");
             }
             
             toast({
