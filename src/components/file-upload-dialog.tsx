@@ -23,6 +23,24 @@ type FileUploadDialogProps = {
     onUploadComplete: (uploadData: Omit<UploadType, 'id' | 'user_id' | 'fecha_subida' | 'estado'> & { original_name: string }) => void;
 };
 
+const getFileTypeFromExtension = (fileName: string): UploadType['tipo_archivo'] => {
+    const extension = fileName.split('.').pop()?.toLowerCase();
+    switch (extension) {
+        case 'pdf':
+            return 'pdf';
+        case 'doc':
+        case 'docx':
+            return 'word';
+        case 'xls':
+        case 'xlsx':
+            return 'excel';
+        case 'zip':
+            return 'zip';
+        default:
+            return 'otro';
+    }
+}
+
 export function FileUploadDialog({ onUploadComplete }: FileUploadDialogProps) {
     const { toast } = useToast();
     const [isOpen, setIsOpen] = useState(false);
@@ -40,13 +58,13 @@ export function FileUploadDialog({ onUploadComplete }: FileUploadDialogProps) {
             });
             return;
         }
-
-        const fileType = formData.get('tipo_archivo') as UploadType['tipo_archivo'];
+        
         const usage = formData.get('uso') as UploadType['uso'];
         const description = formData.get('descripcion') as string | undefined;
 
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
+            const fileType = getFileTypeFromExtension(file.name);
             const newUploadData = {
                 original_name: file.name,
                 tipo_archivo: fileType,
@@ -97,36 +115,19 @@ export function FileUploadDialog({ onUploadComplete }: FileUploadDialogProps) {
                         />
                         {files && <div className="text-sm text-muted-foreground">{files.length} archivo(s) seleccionado(s)</div>}
                     </div>
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                        <div className="space-y-2">
-                            <Label htmlFor="tipo_archivo">Tipo de Archivo</Label>
-                            <Select name="tipo_archivo" required>
-                                <SelectTrigger id="tipo_archivo">
-                                <SelectValue placeholder="Selecciona un tipo" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                <SelectItem value="pdf">PDF</SelectItem>
-                                <SelectItem value="word">Word</SelectItem>
-                                <SelectItem value="excel">Excel</SelectItem>
-                                <SelectItem value="zip">ZIP</SelectItem>
-                                <SelectItem value="otro">Otro</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="uso">Uso del Archivo</Label>
-                            <Select name="uso" required>
-                                <SelectTrigger id="uso">
-                                <SelectValue placeholder="Selecciona un uso" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                <SelectItem value="acta">Acta</SelectItem>
-                                <SelectItem value="contrato">Contrato</SelectItem>
-                                <SelectItem value="memorando">Memorando</SelectItem>
-                                <SelectItem value="otro">Otro</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="uso">Uso del Archivo</Label>
+                        <Select name="uso" required>
+                            <SelectTrigger id="uso">
+                            <SelectValue placeholder="Selecciona un uso" />
+                            </SelectTrigger>
+                            <SelectContent>
+                            <SelectItem value="acta">Acta</SelectItem>
+                            <SelectItem value="contrato">Contrato</SelectItem>
+                            <SelectItem value="memorando">Memorando</SelectItem>
+                            <SelectItem value="otro">Otro</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="descripcion">Descripción (Opcional)</Label>
