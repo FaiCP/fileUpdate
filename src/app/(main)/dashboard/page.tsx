@@ -4,37 +4,19 @@ import * as React from "react";
 import { DashboardAdmin } from "@/components/dashboard-admin";
 import { DashboardUser } from "@/components/dashboard-user";
 import { PageHeader } from "@/components/page-header";
-import { useUser, useFirestore } from "@/firebase";
-import { useDoc } from "@/firebase/firestore/use-doc";
-import { doc } from "firebase/firestore";
 import type { User } from "@/lib/types";
 
-export default function DashboardPage() {
-  const { user: authUser, isUserLoading: isAuthLoading } = useUser();
-  const firestore = useFirestore();
+// This component now expects `currentUser` to be passed as a prop from MainLayout.
+type DashboardPageProps = {
+  currentUser?: User;
+};
 
-  const userDocRef = React.useMemo(() => {
-    if (!firestore || !authUser) return null;
-    return doc(firestore, 'users', authUser.uid);
-  }, [firestore, authUser]);
-
-  const { data: currentUser, isLoading: isUserDocLoading } = useDoc<User>(userDocRef);
-
-  const isLoading = isAuthLoading || isUserDocLoading;
-
-  if (isLoading) {
+export default function DashboardPage({ currentUser }: DashboardPageProps) {
+  // If for some reason currentUser is not available, show a loading/error state.
+  if (!currentUser) {
     return <div>Cargando dashboard...</div>;
   }
 
-  if (!currentUser) {
-    // This can happen if the user is authenticated but their document doesn't exist in Firestore yet.
-    // Or if the user is not authenticated. Redirecting to login might be appropriate.
-    if (typeof window !== 'undefined') {
-      window.location.href = '/';
-    }
-    return null;
-  }
-  
   const isAdmin = currentUser.rol === 'admin';
 
   return (
