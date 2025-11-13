@@ -1,18 +1,43 @@
-import { users } from "@/lib/data";
+"use client";
+
+import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { SidebarNav } from "@/components/sidebar-nav";
 import { UserNav } from "@/components/user-nav";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { doc } from "firebase/firestore";
+import { useDoc } from "@/firebase/firestore/use-doc";
+import type { User } from "@/lib/types";
 
 export default function MainLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // In a real app, you'd get the user from session.
-  // We'll simulate a user login by finding a user with rol 'user'.
-  const currentUser = users.find(u => u.rol === 'user'); 
-  if (!currentUser) return null;
+  const { user: authUser, isUserLoading } = useUser();
+  const firestore = useFirestore();
+
+  const userDocRef = useMemoFirebase(() => {
+    if (!firestore || !authUser) return null;
+    return doc(firestore, 'users', authUser.uid);
+  }, [firestore, authUser]);
+
+  const { data: currentUser, isLoading: isUserDocLoading } = useDoc<User>(userDocRef);
+
+  if (isUserLoading || isUserDocLoading) {
+    // You can render a loading skeleton here
+    return <div>Loading...</div>;
+  }
+  
+  if (!currentUser) {
+    // This can happen if the user is authenticated but their document doesn't exist in Firestore yet.
+    // Or if the user is not authenticated. Redirecting to login might be appropriate.
+    // For now, let's just show a message. In a real app, you'd redirect.
+     if (typeof window !== 'undefined') {
+      window.location.href = '/';
+    }
+    return null;
+  }
 
 
   return (

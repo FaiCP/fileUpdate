@@ -4,16 +4,35 @@ import * as React from "react";
 import { DashboardAdmin } from "@/components/dashboard-admin";
 import { DashboardUser } from "@/components/dashboard-user";
 import { PageHeader } from "@/components/page-header";
-import { users } from "@/lib/data"; // In a real app, you'd get this from a session/context
+import { useUser, useFirestore } from "@/firebase";
+import { useDoc } from "@/firebase/firestore/use-doc";
+import { doc } from "firebase/firestore";
+import type { User } from "@/lib/types";
 
 export default function DashboardPage() {
-  // In a real app, you would get the current user from a session or context.
-  // We'll simulate this by finding a logged-in user.
-  const currentUser = users.find(u => u.rol === 'user'); // Simulating user login
+  const { user: authUser, isUserLoading: isAuthLoading } = useUser();
+  const firestore = useFirestore();
+
+  const userDocRef = React.useMemo(() => {
+    if (!firestore || !authUser) return null;
+    return doc(firestore, 'users', authUser.uid);
+  }, [firestore, authUser]);
+
+  const { data: currentUser, isLoading: isUserDocLoading } = useDoc<User>(userDocRef);
+
+  const isLoading = isAuthLoading || isUserDocLoading;
+
+  if (isLoading) {
+    return <div>Cargando dashboard...</div>;
+  }
 
   if (!currentUser) {
-    // Handle case where user is not found, maybe redirect to login
-    return <div>Usuario no encontrado.</div>;
+    // This can happen if the user is authenticated but their document doesn't exist in Firestore yet.
+    // Or if the user is not authenticated. Redirecting to login might be appropriate.
+    if (typeof window !== 'undefined') {
+      window.location.href = '/';
+    }
+    return null;
   }
   
   const isAdmin = currentUser.rol === 'admin';
@@ -25,7 +44,7 @@ export default function DashboardPage() {
         description={isAdmin ? "Vista general para administradores." : "Resumen de tu actividad."}
       />
 
-      {isAdmin ? <DashboardAdmin /> : <DashboardUser />}
+      {isAdmin ? <DashboardAdmin /> : <DashboardUser currentUser={currentUser} />}
     </div>
   );
 }

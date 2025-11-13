@@ -5,27 +5,34 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Bar, BarChart, CartesianGrid, XAxis, Pie, PieChart, Cell } from "recharts";
-import { uploads, users, getUserById } from "@/lib/data";
+import { uploads } from "@/lib/data";
 import { Upload, FileText, Users } from "lucide-react";
 import { useMemo } from "react";
 import type { Upload as UploadType, User as UserType } from "@/lib/types";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { collection } from "firebase/firestore";
+import { getUserById } from "@/lib/data";
 
 const COLORS = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))"];
 
 export default function AdminHistoryPage() {
+    const firestore = useFirestore();
+    const { data: users, isLoading: usersLoading } = useCollection<UserType>(useMemoFirebase(() => collection(firestore, 'users'), [firestore]));
+
     const totalUploads = uploads.length;
-    const totalUsers = users.length;
+    const totalUsers = users?.length || 0;
 
     const uploadsByDepartment = useMemo(() => {
+        if (!users) return [];
         const counts: { [key: string]: number } = {};
         uploads.forEach(upload => {
-            const user = getUserById(upload.user_id);
+            const user = getUserById(upload.user_id, users);
             if (user) {
                 counts[user.departamento] = (counts[user.departamento] || 0) + 1;
             }
         });
         return Object.entries(counts).map(([name, total]) => ({ name, total }));
-    }, []);
+    }, [users]);
 
     const uploadsByType = useMemo(() => {
         const counts: { [key: string]: number } = {};
@@ -36,11 +43,12 @@ export default function AdminHistoryPage() {
     }, []);
 
     const uploadsWithUsers = useMemo(() => {
+         if (!users) return [];
         return uploads.map(upload => ({
             ...upload,
-            user: getUserById(upload.user_id)
+            user: getUserById(upload.user_id, users)
         })).sort((a, b) => new Date(b.fecha_subida).getTime() - new Date(a.fecha_subida).getTime());
-    }, []);
+    }, [users]);
 
 
   return (
@@ -132,7 +140,7 @@ export default function AdminHistoryPage() {
                                 <TableCell>{upload.user ? `${upload.user.nombres} ${upload.user.apellidos}` : 'Usuario Desconocido'}</TableCell>
                                 <TableCell className="hidden md:table-cell">{upload.user?.departamento}</TableCell>
                                 <TableCell className="hidden sm:table-cell">{upload.estado}</TableCell>
-                                <TableCell className="hidden lg:table-cell text-right">{upload.fecha_subida}</TableCell>
+                                <TableCell className="hidden lg:cell text-right">{upload.fecha_subida}</TableCell>
                             </TableRow>
                         ))}
                     </TableBody>

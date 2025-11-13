@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { getUploadsForUser, users } from "@/lib/data";
+import { getUploadsForUser } from "@/lib/data";
 import type { UploadStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/page-header";
@@ -19,6 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { useUser } from "@/firebase";
 
 const statusConfig: Record<UploadStatus, { label: string; icon: React.ElementType; color: string; textColor: string }> = {
   PENDIENTE: { label: "Pendiente", icon: Hourglass, color: "bg-yellow-100 dark:bg-yellow-900", textColor: "text-yellow-700 dark:text-yellow-300"},
@@ -40,11 +41,10 @@ const StatusBadge = ({ status }: { status: UploadStatus }) => {
 
 
 export default function UserFilesPage() {
-  // In a real app, this would come from the user's session
-  const currentUser = users.find(u => u.rol === 'user' && u.id === 2);
+  const { user: currentUser } = useUser();
   if (!currentUser) return null;
 
-  const userUploads = getUploadsForUser(currentUser.id);
+  const userUploads = getUploadsForUser(currentUser.uid);
   const dummyPdfUrl = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf";
 
   return (

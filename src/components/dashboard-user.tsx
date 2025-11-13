@@ -7,8 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { getUploadsForUser, users, uploads as allUploads } from "@/lib/data";
-import type { Upload, UploadStatus } from "@/lib/types";
+import { getUploadsForUser, uploads as allUploads } from "@/lib/data";
+import type { Upload, UploadStatus, User } from "@/lib/types";
 import { FileUploadDialog } from "@/components/file-upload-dialog";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -31,20 +31,17 @@ const StatusBadge = ({ status }: { status: UploadStatus }) => {
   );
 };
 
+type DashboardUserProps = {
+  currentUser: User;
+}
 
-export function DashboardUser() {
-  // In a real app, this would come from the user's session
-  const currentUser = users.find(u => u.rol === 'user' && u.id === 2);
-  
+export function DashboardUser({ currentUser }: DashboardUserProps) {
   const [userUploads, setUserUploads] = useState(() => {
-    if (!currentUser) return [];
     return getUploadsForUser(currentUser.id);
   });
 
   const dummyPdfUrl = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf";
   
-  if (!currentUser) return null;
-
   const handleUploadComplete = (newUploadData: Omit<Upload, 'id' | 'user_id' | 'fecha_subida' | 'estado'> & { original_name: string }) => {
     const newUpload: Upload = {
         ...newUploadData,

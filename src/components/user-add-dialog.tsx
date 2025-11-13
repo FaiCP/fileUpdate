@@ -15,17 +15,20 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import type { User } from "@/lib/types";
+import { useAuth } from "@/firebase";
+import { createUserWithEmailAndPassword } from "firebase/auth";
 
 type UserData = Omit<User, 'id' | 'avatarUrl' | 'activo'>;
 
 type UserAddDialogProps = {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
-  onSave: (user: UserData) => void;
+  onSave: (user: UserData, userId?: string) => void;
   user?: User;
 };
 
 export function UserAddDialog({ isOpen, setIsOpen, onSave, user }: UserAddDialogProps) {
+    const auth = useAuth();
     const { toast } = useToast();
     const [formData, setFormData] = useState<Partial<UserData>>({});
     const [password, setPassword] = useState('');
@@ -42,7 +45,10 @@ export function UserAddDialog({ isOpen, setIsOpen, onSave, user }: UserAddDialog
             });
             setPassword(''); // Clear password for existing user edit
         } else {
-            setFormData({});
+            setFormData({
+                rol: 'user',
+                departamento: 'Recursos Humanos',
+            });
             setPassword('');
         }
     }, [user, isOpen]);
@@ -56,7 +62,7 @@ export function UserAddDialog({ isOpen, setIsOpen, onSave, user }: UserAddDialog
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
         if (!user && !password) {
@@ -68,13 +74,30 @@ export function UserAddDialog({ isOpen, setIsOpen, onSave, user }: UserAddDialog
             return;
         }
 
-        onSave(formData as UserData);
-        
-        toast({
-            title: user ? "Usuario Actualizado" : "Usuario Creado",
-            description: `El usuario ${formData.nombres} ha sido ${user ? 'actualizado' : 'creado'} correctamente.`,
-        });
-        setIsOpen(false);
+        try {
+            if (user) {
+                // Editing user - no auth changes here, just Firestore
+                onSave(formData as UserData);
+            } else {
+                // Creating new user
+                const userCredential = await createUserWithEmailAndPassword(auth, formData.email!, password);
+                const newUserId = userCredential.user.uid;
+                onSave(formData as UserData, newUserId);
+            }
+            
+            toast({
+                title: user ? "Usuario Actualizado" : "Usuario Creado",
+                description: `El usuario ${formData.nombres} ha sido ${user ? 'actualizado' : 'creado'} correctamente.`,
+            });
+            setIsOpen(false);
+        } catch(error: any) {
+            console.error("Error saving user:", error);
+             toast({
+                variant: "destructive",
+                title: "Error al guardar",
+                description: error.message || "No se pudo crear o actualizar el usuario.",
+            });
+        }
     }
 
   return (
@@ -100,7 +123,7 @@ export function UserAddDialog({ isOpen, setIsOpen, onSave, user }: UserAddDialog
                 </div>
                  <div className="space-y-2">
                     <Label htmlFor="email">Correo Electrónico</Label>
-                    <Input id="email" type="email" placeholder="Ej: juan.perez@institucion.com" required value={formData.email || ''} onChange={handleChange} />
+                    <Input id="email" type="email" placeholder="Ej: juan.perez@institucion.com" required value={formData.email || ''} onChange={handleChange} disabled={!!user}/>
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="cedula">Cédula</Label>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { MoreHorizontal, PlusCircle, Search, UserCog } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,14 +22,19 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { users as initialUsers } from "@/lib/data";
 import { PageHeader } from "@/components/page-header";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { UserAddDialog } from "@/components/user-add-dialog";
 import type { User } from "@/lib/types";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { collection, doc } from "firebase/firestore";
+import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
 export default function AdminUsersPage() {
-  const [users, setUsers] = useState<User[]>(initialUsers);
+  const firestore = useFirestore();
+  const usersCollectionRef = useMemoFirebase(() => collection(firestore, 'users'), [firestore]);
+  const { data: users, isLoading } = useCollection<User>(usersCollectionRef);
+  
   const [isUserDialogOpen, setUserDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | undefined>(undefined);
   const [searchTerm, setSearchTerm] = useState("");
@@ -44,34 +49,44 @@ export default function AdminUsersPage() {
     setUserDialogOpen(false);
   };
 
-  const handleSaveUser = (user: Omit<User, 'id' | 'avatarUrl' | 'activo'>) => {
+  const handleSaveUser = (userData: Omit<User, 'id' | 'avatarUrl' | 'activo'>, newUserId?: string) => {
     if (editingUser) {
       // Edit existing user
-      setUsers(users.map(u => u.id === editingUser.id ? { ...editingUser, ...user } : u));
-    } else {
-      // Add new user
-      const newUser: User = {
-        ...user,
-        id: Math.max(...users.map(u => u.id)) + 1,
+      const userRef = doc(firestore, "users", editingUser.id);
+      setDocumentNonBlocking(userRef, userData, { merge: true });
+    } else if (newUserId) {
+      // Add new user (the auth part is handled in the dialog)
+      const newUserRef = doc(firestore, "users", newUserId);
+      const newUser: Partial<User> = {
+        ...userData,
+        id: newUserId,
         activo: true,
         avatarUrl: `https://picsum.photos/seed/${Math.random()}/100/100`,
       };
-      setUsers([...users, newUser]);
+      setDocumentNonBlocking(newUserRef, newUser, { merge: true });
     }
   };
 
-  const toggleUserStatus = (userId: number) => {
-    setUsers(users.map(u => u.id === userId ? { ...u, activo: !u.activo } : u));
+  const toggleUserStatus = (user: User) => {
+    const userRef = doc(firestore, "users", user.id);
+    setDocumentNonBlocking(userRef, { activo: !user.activo }, { merge: true });
   };
   
-  const promoteToAdmin = (userId: number) => {
-    setUsers(users.map(u => u.id === userId ? { ...u, rol: 'admin' } : u));
+  const promoteToAdmin = (user: User) => {
+    const userRef = doc(firestore, "users", user.id);
+    setDocumentNonBlocking(userRef, { rol: 'admin' }, { merge: true });
+    // Also add to roles_admin collection for security rule check
+    const adminRoleRef = doc(firestore, "roles_admin", user.id);
+    setDocumentNonBlocking(adminRoleRef, { grantedAt: new Date() }, { merge: true });
   };
 
-  const filteredUsers = users.filter(user =>
-    `${user.nombres} ${user.apellidos}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredUsers = useMemo(() => {
+    if (!users) return [];
+    return users.filter(user =>
+      `${user.nombres} ${user.apellidos}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [users, searchTerm]);
 
   return (
     <div className="container mx-auto px-0">
@@ -121,7 +136,8 @@ export default function AdminUsersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredUsers.map((user) => (
+              {isLoading && <TableRow><TableCell colSpan={5}>Cargando usuarios...</TableCell></TableRow>}
+              {!isLoading && filteredUsers.map((user) => (
                 <TableRow key={user.id}>
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-3">
@@ -153,13 +169,13 @@ export default function AdminUsersPage() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Acciones</DropdownMenuLabel>
                         <DropdownMenuItem onClick={() => handleOpenDialog(user)}>Editar</DropdownMenuItem>
-                        <DropdownMenuItem className={user.activo ? "text-destructive" : ""} onClick={() => toggleUserStatus(user.id)}>
+                        <DropdownMenuItem className={user.activo ? "text-destructive" : ""} onClick={() => toggleUserStatus(user)}>
                           {user.activo ? "Desactivar" : "Activar"}
                         </DropdownMenuItem>
                          {user.rol !== 'admin' && (
                           <>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => promoteToAdmin(user.id)}>
+                            <DropdownMenuItem onClick={() => promoteToAdmin(user)}>
                               <UserCog className="mr-2 h-4 w-4" />
                               Hacer Administrador
                             </DropdownMenuItem>

@@ -1,5 +1,7 @@
+import { Timestamp } from "firebase/firestore";
+
 export type User = {
-  id: number;
+  id: string; // Changed to string to match Firebase Auth UID
   nombres: string;
   apellidos: string;
   cedula: string;
@@ -8,13 +10,14 @@ export type User = {
   rol: 'user' | 'admin';
   activo: boolean;
   avatarUrl: string;
+  dateJoined?: Timestamp;
 };
 
 export type UploadStatus = 'PENDIENTE' | 'EN REVISION' | 'CORRECCIONES' | 'APROBADO' | 'RECHAZADO';
 
 export type Upload = {
   id: number;
-  user_id: number;
+  user_id: string; // Changed to string to match Firebase Auth UID
   original_name: string;
   tipo_archivo: 'pdf' | 'word' | 'excel' | 'zip' | 'otro';
   uso: 'acta' | 'contrato' | 'memorando' | 'otro';

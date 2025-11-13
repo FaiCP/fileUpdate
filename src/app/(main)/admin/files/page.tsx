@@ -28,6 +28,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState, useMemo } from "react";
 import { FileReviewDialog } from "@/components/file-review-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { collection, query } from "firebase/firestore";
 
 const statusConfig: Record<UploadStatus, { label: string; icon: React.ElementType; color: string; textColor: string }> = {
   PENDIENTE: { label: "Pendiente", icon: Hourglass, color: "bg-yellow-100 dark:bg-yellow-900", textColor: "text-yellow-700 dark:text-yellow-300"},
@@ -50,6 +52,11 @@ const StatusBadge = ({ status }: { status: UploadStatus }) => {
 };
 
 export default function AdminFilesPage() {
+    const firestore = useFirestore();
+    const { data: allUsers } = useCollection(useMemoFirebase(() => collection(firestore, 'users'), [firestore]));
+    
+    // In a real app, this would be a more complex query, potentially a collection group query
+    // For now, we are using mock data for uploads
     const [uploads, setUploads] = useState<Upload[]>(initialUploads);
     const [isReviewDialogOpen, setReviewDialogOpen] = useState(false);
     const [selectedUpload, setSelectedUpload] = useState<Upload | undefined>(undefined);
@@ -131,7 +138,7 @@ export default function AdminFilesPage() {
                   </TableHeader>
                   <TableBody>
                     {filteredUploads.map((upload) => {
-                      const user = getUserById(upload.user_id);
+                      const user = allUsers ? getUserById(upload.user_id, allUsers) : undefined;
                       return (
                         <TableRow key={upload.id}>
                           <TableCell className="font-medium">
@@ -181,6 +188,7 @@ export default function AdminFilesPage() {
           setIsOpen={setReviewDialogOpen}
           upload={selectedUpload}
           onUpdateStatus={handleUpdateStatus}
+          allUsers={allUsers || []}
         />
       )}
     </div>

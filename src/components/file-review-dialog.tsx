@@ -12,7 +12,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import type { Upload, UploadStatus } from "@/lib/types";
+import type { Upload, UploadStatus, User } from "@/lib/types";
 import { getUserById } from "@/lib/data";
 import { Check, Send, X, Printer } from "lucide-react";
 import { useState, useRef } from "react";
@@ -24,10 +24,11 @@ type FileReviewDialogProps = {
   setIsOpen: (open: boolean) => void;
   upload: Upload;
   onUpdateStatus: (uploadId: number, status: UploadStatus, observaciones?: string) => void;
+  allUsers: User[];
 };
 
-export function FileReviewDialog({ isOpen, setIsOpen, upload, onUpdateStatus }: FileReviewDialogProps) {
-  const user = getUserById(upload.user_id);
+export function FileReviewDialog({ isOpen, setIsOpen, upload, onUpdateStatus, allUsers }: FileReviewDialogProps) {
+  const user = getUserById(upload.user_id, allUsers);
   const [observaciones, setObservaciones] = useState(upload.observaciones || "");
   const actaRef = useRef<HTMLDivElement>(null);
 

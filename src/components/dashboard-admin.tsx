@@ -4,11 +4,13 @@ import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContaine
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { uploads, users, getUserById } from "@/lib/data";
+import { uploads, getUserById } from "@/lib/data";
 import { cn } from "@/lib/utils";
-import type { Upload, UploadStatus } from "@/lib/types";
+import type { Upload, UploadStatus, User } from "@/lib/types";
 import { FileCheck2, FileClock, FileText, FileX2, Hourglass, Users as UsersIcon } from "lucide-react";
 import { subDays, format } from 'date-fns';
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { collection } from "firebase/firestore";
 
 const chartData = Array.from({ length: 7 }).map((_, i) => {
     const date = subDays(new Date(), i);
@@ -36,12 +38,14 @@ const StatusBadge = ({ status }: { status: UploadStatus }) => {
   );
 };
 
-const recentUploads = uploads.slice(0, 5).map(u => ({ ...u, user: getUserById(u.user_id) }));
-
 export function DashboardAdmin() {
+    const firestore = useFirestore();
+    const { data: users, isLoading: usersLoading } = useCollection<User>(useMemoFirebase(() => collection(firestore, 'users'), [firestore]));
+
+    const recentUploads = uploads.slice(0, 5).map(u => ({ ...u, user: users ? getUserById(u.user_id, users) : undefined }));
     const pendingCount = uploads.filter(u => u.estado === 'PENDIENTE').length;
     const approvedCount = uploads.filter(u => u.estado === 'APROBADO').length;
-    const activeUsersCount = users.filter(u => u.activo).length;
+    const activeUsersCount = users?.filter(u => u.activo).length || 0;
 
   return (
     <div className="space-y-6">

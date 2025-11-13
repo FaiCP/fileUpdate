@@ -2,57 +2,18 @@ import type { User, Upload, UploadStatus } from '@/lib/types';
 import { subDays, format } from 'date-fns';
 
 export const users: User[] = [
-  {
-    id: 1,
-    nombres: 'Ana',
-    apellidos: 'García',
-    cedula: '12345678-9',
-    departamento: 'Recursos Humanos',
-    email: 'ana.garcia@institucion.com',
-    rol: 'admin',
-    activo: true,
-    avatarUrl: 'https://picsum.photos/seed/10/100/100',
-  },
-  {
-    id: 2,
-    nombres: 'Carlos',
-    apellidos: 'Martinez',
-    cedula: '87654321-0',
-    departamento: 'Finanzas',
-    email: 'carlos.martinez@institucion.com',
-    rol: 'user',
-    activo: true,
-    avatarUrl: 'https://picsum.photos/seed/11/100/100',
-  },
-  {
-    id: 3,
-    nombres: 'Sofia',
-    apellidos: 'Rodriguez',
-    cedula: '11223344-5',
-    departamento: 'Legal',
-    email: 'sofia.rodriguez@institucion.com',
-    rol: 'user',
-    activo: true,
-    avatarUrl: 'https://picsum.photos/seed/12/100/100',
-  },
-  {
-    id: 4,
-    nombres: 'Luis',
-    apellidos: 'Hernandez',
-    cedula: '55667788-9',
-    departamento: 'Tecnología',
-    email: 'luis.hernandez@institucion.com',
-    rol: 'user',
-    activo: false,
-    avatarUrl: 'https://picsum.photos/seed/13/100/100',
-  }
+  // This data is now managed in Firestore.
+  // The structure is kept here for reference on the type.
 ];
+
+export const getUserById = (userId: string, allUsers: User[]): User | undefined => allUsers.find(u => u.id === userId);
+
 
 const now = new Date();
 export const uploads: Upload[] = [
     {
         id: 101,
-        user_id: 2,
+        user_id: "2", // Changed to string to match Firestore ID
         original_name: 'contrato_servicios_2024.pdf',
         tipo_archivo: 'pdf',
         uso: 'contrato',
@@ -63,7 +24,7 @@ export const uploads: Upload[] = [
     },
     {
         id: 102,
-        user_id: 2,
+        user_id: "2",
         original_name: 'reporte_financiero_mayo.xlsx',
         tipo_archivo: 'excel',
         uso: 'otro',
@@ -72,7 +33,7 @@ export const uploads: Upload[] = [
     },
     {
         id: 103,
-        user_id: 3,
+        user_id: "3",
         original_name: 'acta_reunion_directorio.docx',
         tipo_archivo: 'word',
         uso: 'acta',
@@ -83,7 +44,7 @@ export const uploads: Upload[] = [
     },
     {
         id: 104,
-        user_id: 3,
+        user_id: "3",
         original_name: 'memorando_interno_005.pdf',
         tipo_archivo: 'pdf',
         uso: 'memorando',
@@ -93,7 +54,7 @@ export const uploads: Upload[] = [
     },
     {
         id: 105,
-        user_id: 2,
+        user_id: "2",
         original_name: 'anexos_proyecto_alpha.zip',
         tipo_archivo: 'zip',
         uso: 'otro',
@@ -103,7 +64,7 @@ export const uploads: Upload[] = [
     },
     {
         id: 106,
-        user_id: 4,
+        user_id: "4",
         original_name: 'propuesta_migracion_cloud.pdf',
         tipo_archivo: 'pdf',
         uso: 'contrato',
@@ -113,6 +74,4 @@ export const uploads: Upload[] = [
     },
 ];
 
-export const getUploadsForUser = (userId: number) => uploads.filter(u => u.user_id === userId);
-
-export const getUserById = (userId: number) => users.find(u => u.id === userId);
+export const getUploadsForUser = (userId: string) => uploads.filter(u => u.user_id === userId);
