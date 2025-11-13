@@ -1,14 +1,16 @@
 "use client"
 
+import { useState } from "react";
 import { Clock, Download, FileCheck2, FileClock, FileText, FileX2, Hourglass } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { getUploadsForUser, users } from "@/lib/data";
+import { getUploadsForUser, users, uploads as allUploads } from "@/lib/data";
 import type { Upload, UploadStatus } from "@/lib/types";
 import { FileUploadDialog } from "@/components/file-upload-dialog";
 import { cn } from "@/lib/utils";
+import { format } from "date-fns";
 
 const statusConfig: Record<UploadStatus, { label: string; icon: React.ElementType; color: string }> = {
   PENDIENTE: { label: "Pendiente", icon: Hourglass, color: "bg-yellow-500" },
@@ -32,9 +34,29 @@ const StatusBadge = ({ status }: { status: UploadStatus }) => {
 export function DashboardUser() {
   // In a real app, this would come from the user's session
   const currentUser = users.find(u => u.rol === 'user' && u.id === 2);
+  
+  const [userUploads, setUserUploads] = useState(() => {
+    if (!currentUser) return [];
+    return getUploadsForUser(currentUser.id);
+  });
+  
   if (!currentUser) return null;
 
-  const userUploads = getUploadsForUser(currentUser.id).slice(0, 5);
+  const handleUploadComplete = (newUploadData: Omit<Upload, 'id' | 'user_id' | 'fecha_subida' | 'estado'> & { original_name: string }) => {
+    const newUpload: Upload = {
+        ...newUploadData,
+        id: Math.max(...allUploads.map(u => u.id), 0) + 1,
+        user_id: currentUser.id,
+        fecha_subida: format(new Date(), 'yyyy-MM-dd HH:mm'),
+        estado: 'PENDIENTE'
+    };
+
+    // This would be a DB insert in a real app
+    allUploads.unshift(newUpload); 
+    setUserUploads(prevUploads => [newUpload, ...prevUploads]);
+  };
+
+  const recentUploads = userUploads.slice(0, 5);
 
   return (
     <div className="space-y-6">
@@ -44,7 +66,7 @@ export function DashboardUser() {
           <CardDescription>¿Listo para empezar? Sube tu primer archivo para que sea revisado.</CardDescription>
         </CardHeader>
         <CardContent>
-          <FileUploadDialog />
+          <FileUploadDialog onUploadComplete={handleUploadComplete} />
         </CardContent>
       </Card>
 
@@ -64,7 +86,7 @@ export function DashboardUser() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {userUploads.map((upload) => (
+              {recentUploads.map((upload) => (
                 <TableRow key={upload.id}>
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-3">

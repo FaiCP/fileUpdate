@@ -1,5 +1,6 @@
 "use client";
 
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -16,18 +17,42 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import type { Upload as UploadType } from "@/lib/types";
 
-export function FileUploadDialog() {
+type FileUploadDialogProps = {
+    onUploadComplete: (uploadData: Omit<UploadType, 'id' | 'user_id' | 'fecha_subida' | 'estado'> & { original_name: string }) => void;
+};
+
+export function FileUploadDialog({ onUploadComplete }: FileUploadDialogProps) {
     const { toast } = useToast();
+    const [isOpen, setIsOpen] = useState(false);
+    const [file, setFile] = useState<File | null>(null);
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        // In a real app, you would handle form submission here.
-        // For now, we just close the dialog and show a toast.
+        const formData = new FormData(e.currentTarget);
         
-        // This is a bit of a trick to close the dialog.
-        // In a real app, you'd control the 'open' state.
-        document.getElementById('close-dialog-btn')?.click();
+        if (!file) {
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Por favor, selecciona un archivo para subir.",
+            });
+            return;
+        }
+
+        const newUploadData = {
+            original_name: file.name,
+            tipo_archivo: formData.get('tipo_archivo') as UploadType['tipo_archivo'],
+            uso: formData.get('uso') as UploadType['uso'],
+            descripcion: formData.get('descripcion') as string | undefined,
+        };
+
+        onUploadComplete(newUploadData);
+        
+        setIsOpen(false);
+        setFile(null);
+        (e.target as HTMLFormElement).reset();
 
         toast({
             title: "Archivo Subido",
@@ -36,9 +61,9 @@ export function FileUploadDialog() {
     }
 
   return (
-    <Dialog>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button size="lg" className="text-base">
+        <Button size="lg" className="text-base" onClick={() => setIsOpen(true)}>
           <Upload className="mr-2 h-5 w-5" />
           Subir Archivo
         </Button>
@@ -53,10 +78,16 @@ export function FileUploadDialog() {
         <form onSubmit={handleSubmit}>
             <div className="grid gap-6 py-4">
             <div className="grid grid-cols-1 items-center gap-4">
-                <Label htmlFor="file-upload" className="sr-only">
+                <Label htmlFor="file-upload" className="font-medium">
                 Archivo
                 </Label>
-                <Input id="file-upload" type="file" required className="text-foreground" />
+                <Input 
+                    id="file-upload" 
+                    type="file" 
+                    required 
+                    className="text-foreground" 
+                    onChange={(e) => setFile(e.target.files ? e.target.files[0] : null)}
+                />
             </div>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="space-y-2">
@@ -90,19 +121,15 @@ export function FileUploadDialog() {
                 </div>
             </div>
             <div className="space-y-2">
-                <Label htmlFor="departamento">Departamento (Opcional)</Label>
-                <Input id="departamento" placeholder="Ej: Finanzas" />
-            </div>
-            <div className="space-y-2">
                 <Label htmlFor="descripcion">Descripción (Opcional)</Label>
-                <Textarea id="descripcion" placeholder="Añade una breve descripción del contenido del archivo." />
+                <Textarea name="descripcion" id="descripcion" placeholder="Añade una breve descripción del contenido del archivo." />
             </div>
             </div>
             <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancelar</Button>
                 <Button type="submit">Subir y Enviar a Revisión</Button>
             </DialogFooter>
         </form>
-         <button id="close-dialog-btn" style={{ display: 'none' }} onClick={() => (document.querySelector('[data-radix-dialog-content]')?.parentNode as any)?.click()}></button>
       </DialogContent>
     </Dialog>
   );
