@@ -10,6 +10,7 @@ import type { Upload, UploadStatus, User } from "@/lib/types";
 import { FileCheck2, FileClock, FileText, FileX2, Hourglass, Users as UsersIcon } from "lucide-react";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, collectionGroup, query, where, limit, orderBy } from "firebase/firestore";
+import { useMemo } from "react";
 
 const statusConfig: Record<UploadStatus, { label: string; icon: React.ElementType; color: string }> = {
   PENDIENTE: { label: "Pendiente", icon: Hourglass, color: "bg-yellow-500" },
@@ -48,14 +49,20 @@ export function DashboardAdmin() {
     const uploadsQuery = useMemoFirebase(() => collectionGroup(firestore, 'uploads'), [firestore]);
     const { data: allUploads, isLoading: uploadsLoading } = useCollection<Upload>(uploadsQuery);
     
-    // Get recent uploads
+    // Get recent uploads - REMOVED ORDERBY TO AVOID INDEXING ISSUES
     const recentUploadsQuery = useMemoFirebase(() => 
-        query(collectionGroup(firestore, 'uploads'), orderBy('uploadDate', 'desc'), limit(5)),
+        query(collectionGroup(firestore, 'uploads'), limit(5)),
         [firestore]
     );
     const { data: recentUploadsData, isLoading: recentUploadsLoading } = useCollection<Upload>(recentUploadsQuery);
 
-    const recentUploads = (recentUploadsData && users) ? recentUploadsData.map(u => ({ ...u, user: getUserById(u.userId, users) })) : [];
+    const recentUploads = useMemo(() => {
+        if (!recentUploadsData || !users) return [];
+        const enriched = recentUploadsData.map(u => ({ ...u, user: getUserById(u.userId, users) }));
+        // Sort on the client side
+        return enriched.sort((a, b) => new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime());
+    }, [recentUploadsData, users]);
+
 
     const pendingCount = allUploads?.filter(u => u.status === 'PENDIENTE').length ?? 0;
     const approvedCount = allUploads?.filter(u => u.status === 'APROBADO').length ?? 0;
