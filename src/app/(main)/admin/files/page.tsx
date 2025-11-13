@@ -51,7 +51,8 @@ type UploadWithUser = Upload & { user?: User };
 
 export default function AdminFilesPage() {
     const firestore = useFirestore();
-    const { data: allUsers } = useCollection<User>(useMemoFirebase(() => collection(firestore, 'users'), [firestore]));
+    const allUsersQuery = useMemoFirebase(() => collection(firestore, 'users'), [firestore]);
+    const { data: allUsers } = useCollection<User>(allUsersQuery);
     
     // Use a collection group query to get all uploads from all users
     const uploadsQuery = useMemoFirebase(() => collectionGroup(firestore, 'uploads'), [firestore]);
