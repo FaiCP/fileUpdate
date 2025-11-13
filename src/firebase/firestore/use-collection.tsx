@@ -8,9 +8,11 @@ import {
   FirestoreError,
   QuerySnapshot,
   CollectionReference,
+  collectionGroup,
 } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { useFirestore } from '../provider';
 
 /** Utility type to add an 'id' field to a given type T. */
 export type WithId<T> = T & { id: string };
@@ -60,9 +62,19 @@ export function useCollection<T = any>(
   const [data, setData] = useState<StateDataType>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
+  const firestore = useFirestore();
 
   useEffect(() => {
-    if (!memoizedTargetRefOrQuery) {
+    let targetQuery = memoizedTargetRefOrQuery;
+
+    // This is a special case to handle a very specific bug with collectionGroup queries
+    // where an empty string was passed, causing a root query. This should be made more robust.
+    if (targetQuery && targetQuery.type === 'query' && (targetQuery as any)._query.path.isEmpty()) {
+       console.warn("An empty collectionGroup query was detected and blocked. This is likely an error in the component calling useCollection.");
+       targetQuery = null; // Block the query
+    }
+
+    if (!targetQuery) {
       setData(null);
       setIsLoading(false);
       setError(null);
@@ -74,7 +86,7 @@ export function useCollection<T = any>(
 
     // Directly use memoizedTargetRefOrQuery as it's assumed to be the final query
     const unsubscribe = onSnapshot(
-      memoizedTargetRefOrQuery,
+      targetQuery,
       (snapshot: QuerySnapshot<DocumentData>) => {
         const results: ResultItemType[] = [];
         for (const doc of snapshot.docs) {
@@ -87,9 +99,9 @@ export function useCollection<T = any>(
       (error: FirestoreError) => {
         // This logic extracts the path from either a ref or a query
         const path: string =
-          memoizedTargetRefOrQuery.type === 'collection'
-            ? (memoizedTargetRefOrQuery as CollectionReference).path
-            : (memoizedTargetRefOrQuery as unknown as InternalQuery)._query.path.canonicalString()
+          targetQuery.type === 'collection'
+            ? (targetQuery as CollectionReference).path
+            : (targetQuery as unknown as InternalQuery)._query.path.canonicalString()
 
         const contextualError = new FirestorePermissionError({
           operation: 'list',
