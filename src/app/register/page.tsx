@@ -89,6 +89,7 @@ export default function RegisterPage() {
       router.push('/');
 
     } catch (error: any) {
+      console.error("Registration Error:", error);
       let errorMessage = "Ocurrió un error durante el registro.";
       switch (error.code) {
         case 'auth/email-already-in-use':
