@@ -1,23 +1,40 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { FileArchive, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useAuth } from '@/firebase';
+import { useAuth, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { signInWithEmailAndPassword } from 'firebase/auth';
+import { collection, getDocs } from 'firebase/firestore';
 
 export default function LoginPage() {
   const auth = useAuth();
+  const firestore = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
   const [email, setEmail] = useState('ana.garcia@institucion.com');
   const [password, setPassword] = useState('password');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showRegister, setShowRegister] = useState(false);
+
+  useEffect(() => {
+    // Check if there are any users to decide whether to show the register link
+    const checkUsers = async () => {
+      if (firestore) {
+        const usersCollection = collection(firestore, 'users');
+        const userSnapshot = await getDocs(usersCollection);
+        setShowRegister(userSnapshot.empty);
+      }
+    };
+    checkUsers();
+  }, [firestore]);
+
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,13 +50,9 @@ export default function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      // Use the official signInWithEmailAndPassword and await the result
       await signInWithEmailAndPassword(auth, email, password);
-      // On success, Firebase's onAuthStateChanged listener will handle the user state.
-      // We can then safely navigate.
       router.push('/dashboard');
     } catch (error: any) {
-      // Handle login errors (e.g., wrong password, user not found)
       let errorMessage = "Ocurrió un error al iniciar sesión.";
       switch (error.code) {
         case 'auth/user-not-found':
@@ -90,6 +103,14 @@ export default function LoginPage() {
                 {isSubmitting ? 'Iniciando...' : 'Iniciar Sesión'}
               </Button>
             </form>
+             {showRegister && (
+              <div className="mt-4 text-center text-sm">
+                ¿Primer uso?{' '}
+                <Link href="/register" className="underline">
+                  Registra al primer administrador
+                </Link>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
