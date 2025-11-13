@@ -8,8 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/firebase';
-import { initiateEmailSignIn } from '@/firebase/non-blocking-login';
 import { useToast } from '@/hooks/use-toast';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 
 export default function LoginPage() {
   const auth = useAuth();
@@ -17,15 +17,51 @@ export default function LoginPage() {
   const { toast } = useToast();
   const [email, setEmail] = useState('ana.garcia@institucion.com');
   const [password, setPassword] = useState('password');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    initiateEmailSignIn(auth, email, password);
-    // The auth state change will be handled by the onAuthStateChanged listener in FirebaseProvider
-    // which will then trigger a redirect if successful. We can optimistically navigate,
-    // or wait for the user object to be available. For a smoother UX, we can navigate
-    // and the layout will handle the loading state.
-    router.push('/dashboard');
+    if (!auth) {
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "El servicio de autenticación no está disponible.",
+        });
+        return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Use the official signInWithEmailAndPassword and await the result
+      await signInWithEmailAndPassword(auth, email, password);
+      // On success, Firebase's onAuthStateChanged listener will handle the user state.
+      // We can then safely navigate.
+      router.push('/dashboard');
+    } catch (error: any) {
+      // Handle login errors (e.g., wrong password, user not found)
+      let errorMessage = "Ocurrió un error al iniciar sesión.";
+      switch (error.code) {
+        case 'auth/user-not-found':
+        case 'auth/wrong-password':
+        case 'auth/invalid-credential':
+          errorMessage = 'Correo electrónico o contraseña incorrectos.';
+          break;
+        case 'auth/invalid-email':
+          errorMessage = 'El formato del correo electrónico no es válido.';
+          break;
+        default:
+          errorMessage = 'No se pudo iniciar sesión. Por favor, inténtalo de nuevo.';
+          break;
+      }
+      toast({
+        variant: "destructive",
+        title: "Error de autenticación",
+        description: errorMessage,
+      });
+    } finally {
+        setIsSubmitting(false);
+    }
   };
 
   return (
@@ -43,15 +79,15 @@ export default function LoginPage() {
             <form className="space-y-6" onSubmit={handleLogin}>
               <div className="space-y-2">
                 <Label htmlFor="email">Correo Electrónico</Label>
-                <Input id="email" type="email" placeholder="admin@institucion.com" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                <Input id="email" type="email" placeholder="admin@institucion.com" required value={email} onChange={(e) => setEmail(e.target.value)} disabled={isSubmitting} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">Contraseña</Label>
-                <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+                <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} disabled={isSubmitting} />
               </div>
-              <Button type="submit" className="w-full text-lg font-bold">
+              <Button type="submit" className="w-full text-lg font-bold" disabled={isSubmitting}>
                 <LogIn className="mr-2 h-5 w-5" />
-                Iniciar Sesión
+                {isSubmitting ? 'Iniciando...' : 'Iniciar Sesión'}
               </Button>
             </form>
           </CardContent>
