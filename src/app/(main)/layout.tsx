@@ -23,7 +23,7 @@ export default function MainLayout({
   const [layoutState, setLayoutState] = useState<'loading' | 'authenticated' | 'unauthenticated'>('loading');
 
   useEffect(() => {
-    if (isAuthLoading) {
+    if (isAuthLoading || !firestore) {
       setLayoutState('loading');
       return;
     }
@@ -35,7 +35,7 @@ export default function MainLayout({
     }
 
     // Auth user exists, try to fetch Firestore profile if not already fetched
-    if (authUser && !currentUser && firestore) {
+    if (authUser && !currentUser) {
       const fetchUserDocument = async () => {
         const userDocRef = doc(firestore, 'users', authUser.uid);
         try {

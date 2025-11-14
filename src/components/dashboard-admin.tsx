@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import type { Upload, UploadStatus, User } from "@/lib/types";
 import { FileCheck2, FileClock, FileX2, Hourglass, Users as UsersIcon } from "lucide-react";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, collectionGroup, query, limit, orderBy } from "firebase/firestore";
+import { collection, collectionGroup, query, limit } from "firebase/firestore";
 import { useMemo } from "react";
 
 const statusConfig: Record<UploadStatus, { label: string; icon: React.ElementType; color: string }> = {
@@ -47,7 +47,7 @@ export function DashboardAdmin() {
     const { data: allUploads, isLoading: uploadsLoading } = useCollection<Upload>(allUploadsQuery);
     
     const recentUploadsQuery = useMemoFirebase(() => 
-        firestore ? query(collectionGroup(firestore, 'uploads'), orderBy('uploadDate', 'desc'), limit(5)) : null,
+        firestore ? query(collectionGroup(firestore, 'uploads'), limit(5)) : null,
         [firestore]
     );
     const { data: recentUploadsData, isLoading: recentUploadsLoading } = useCollection<Upload>(recentUploadsQuery);
