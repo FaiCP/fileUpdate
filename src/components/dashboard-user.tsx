@@ -121,12 +121,9 @@ export function DashboardUser({ currentUser }: DashboardUserProps) {
 
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Historial Reciente</CardTitle>
-            <CardDescription>Tus 5 envíos más recientes.</CardDescription>
-          </div>
-          <FileUploadDialog currentUser={currentUser} />
+        <CardHeader>
+          <CardTitle>Historial Reciente</CardTitle>
+          <CardDescription>Tus 5 envíos más recientes.</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
