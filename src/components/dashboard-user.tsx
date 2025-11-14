@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { Download, FileCheck2, FileClock, FileText, FileX2, Hourglass } from "lucide-react";
+import { Download, FileCheck2, FileClock, FileText, FileX2, Hourglass, Edit } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,6 +39,21 @@ export function DashboardUser({ currentUser }: DashboardUserProps) {
   const dummyPdfUrl = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf";
   const firestore = useFirestore();
 
+  // Query for all user uploads to calculate stats
+  const allUserUploadsQuery = useMemoFirebase(() => {
+    if (!firestore || !currentUser?.id) return null;
+    return collection(firestore, 'users', currentUser.id, 'uploads');
+  }, [firestore, currentUser.id]);
+  
+  const { data: allUploads, isLoading: isLoadingAll } = useCollection<Upload>(allUserUploadsQuery);
+
+  // Memoized calculations for stats
+  const pendingCount = useMemo(() => allUploads?.filter(u => u.status === 'PENDIENTE').length ?? 0, [allUploads]);
+  const approvedCount = useMemo(() => allUploads?.filter(u => u.status === 'APROBADO').length ?? 0, [allUploads]);
+  const correctionsCount = useMemo(() => allUploads?.filter(u => u.status === 'CORRECCIONES').length ?? 0, [allUploads]);
+
+
+  // Query for the 5 most recent uploads for the table
   const recentUploadsQuery = useMemoFirebase(() => {
     if (!firestore || !currentUser?.id) return null;
     return query(
@@ -48,24 +63,51 @@ export function DashboardUser({ currentUser }: DashboardUserProps) {
     );
   }, [firestore, currentUser.id]);
 
-  const { data: recentUploads, isLoading } = useCollection<Upload>(recentUploadsQuery);
+  const { data: recentUploads, isLoading: isLoadingRecent } = useCollection<Upload>(recentUploadsQuery);
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="font-headline text-2xl">Bienvenido, {currentUser.firstName}</CardTitle>
-          <CardDescription>¿Listo para empezar? Sube tus archivos para que sean revisados.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <FileUploadDialog currentUser={currentUser} />
-        </CardContent>
-      </Card>
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Archivos Pendientes</CardTitle>
+            <Hourglass className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{isLoadingAll ? '...' : pendingCount}</div>
+            <p className="text-xs text-muted-foreground">Esperando revisión</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Archivos Aprobados</CardTitle>
+            <FileCheck2 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{isLoadingAll ? '...' : approvedCount}</div>
+            <p className="text-xs text-muted-foreground">Actas generadas y listas</p>
+          </CardContent>
+        </Card>
+         <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Requieren Corrección</CardTitle>
+            <Edit className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{isLoadingAll ? '...' : correctionsCount}</div>
+            <p className="text-xs text-muted-foreground">Archivos con observaciones</p>
+          </CardContent>
+        </Card>
+      </div>
+
 
       <Card>
-        <CardHeader>
-          <CardTitle>Historial Reciente</CardTitle>
-          <CardDescription>Tus 5 envíos más recientes.</CardDescription>
+        <CardHeader className="flex items-center justify-between">
+          <div>
+            <CardTitle>Historial Reciente</CardTitle>
+            <CardDescription>Tus 5 envíos más recientes.</CardDescription>
+          </div>
+          <FileUploadDialog currentUser={currentUser} />
         </CardHeader>
         <CardContent>
           <Table>
@@ -78,15 +120,15 @@ export function DashboardUser({ currentUser }: DashboardUserProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading && <TableRow><TableCell colSpan={4} className="text-center">Cargando historial...</TableCell></TableRow>}
-              {!isLoading && (!recentUploads || recentUploads.length === 0) && (
+              {isLoadingRecent && <TableRow><TableCell colSpan={4} className="text-center">Cargando historial...</TableCell></TableRow>}
+              {!isLoadingRecent && (!recentUploads || recentUploads.length === 0) && (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center text-muted-foreground py-10">
                     Aún no has subido ningún archivo.
                   </TableCell>
                 </TableRow>
               )}
-              {!isLoading && recentUploads && recentUploads.map((upload) => (
+              {!isLoadingRecent && recentUploads && recentUploads.map((upload) => (
                 <TableRow key={upload.id}>
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-3">
