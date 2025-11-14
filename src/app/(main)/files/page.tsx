@@ -48,7 +48,7 @@ export default function UserFilesPage() {
 
   const dummyPdfUrl = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf";
 
-  if (!currentUser) return <div>Cargando...</div>;
+  if (isLoading || !currentUser) return <div>Cargando...</div>;
 
   return (
     <div className="container mx-auto px-0">
