@@ -18,7 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
-import { useUser, firestore, useCollection, useMemoFirebase } from "@/firebase";
+import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, query, where } from "firebase/firestore";
 import { statusConfig } from "@/lib/status-config";
 
@@ -37,6 +37,7 @@ const StatusBadge = ({ status }: { status: UploadStatus }) => {
 
 export default function UserFilesPage() {
   const { user: currentUser } = useUser();
+  const firestore = useFirestore();
 
   const userUploadsQuery = useMemoFirebase(() => {
     if (!firestore || !currentUser?.uid) return null;

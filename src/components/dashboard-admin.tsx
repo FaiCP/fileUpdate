@@ -8,7 +8,7 @@ import { getUserById } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import type { Upload, UploadStatus, User } from "@/lib/types";
 import { FileCheck2, FileClock, FileText, FileX2, Hourglass, Users as UsersIcon } from "lucide-react";
-import { useCollection, firestore, useMemoFirebase } from "@/firebase";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, collectionGroup, query, where, limit, orderBy } from "firebase/firestore";
 import { useMemo } from "react";
 
@@ -38,6 +38,7 @@ const chartData = [
 ];
 
 export function DashboardAdmin() {
+    const firestore = useFirestore();
     const usersQuery = useMemoFirebase(() => firestore ? collection(firestore, 'users') : null, [firestore]);
     const { data: users, isLoading: usersLoading } = useCollection<User>(usersQuery);
     

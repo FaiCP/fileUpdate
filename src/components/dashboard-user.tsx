@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import type { Upload, UploadStatus, User } from "@/lib/types";
 import { FileUploadDialog } from "@/components/file-upload-dialog";
 import { cn } from "@/lib/utils";
-import { useCollection, firestore, useMemoFirebase } from "@/firebase";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, query, orderBy, limit } from "firebase/firestore";
 
 const statusConfig: Record<UploadStatus, { label: string; icon: React.ElementType; color: string }> = {
@@ -37,6 +37,7 @@ type DashboardUserProps = {
 
 export function DashboardUser({ currentUser }: DashboardUserProps) {
   const dummyPdfUrl = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf";
+  const firestore = useFirestore();
 
   const recentUploadsQuery = useMemoFirebase(() => {
     if (!firestore || !currentUser?.id) return null;
