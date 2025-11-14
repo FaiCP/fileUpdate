@@ -35,8 +35,29 @@ type SidebarNavProps = {
 
 export function SidebarNav({ user }: SidebarNavProps) {
   const pathname = usePathname();
-  const navItems = user.role === "admin" ? adminNavItems : userNavItems;
   const currentUser = useCurrentUser();
+  
+  // Use the reliable currentUser from context to determine role
+  const isAdmin = currentUser?.role === 'admin';
+  const navItems = isAdmin ? adminNavItems : userNavItems;
+
+  if (!currentUser) {
+    return (
+        <Sidebar>
+            <SidebarHeader>
+                 <div className="flex items-center gap-2 p-2">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+                        <FileArchive className="h-6 w-6" />
+                    </div>
+                    <span className="text-lg font-headline font-bold text-sidebar-foreground">Secure File Hub</span>
+                </div>
+            </SidebarHeader>
+            <SidebarContent>
+                {/* Maybe show a loading skeleton here */}
+            </SidebarContent>
+        </Sidebar>
+    )
+  }
 
   return (
     <Sidebar>
@@ -66,7 +87,8 @@ export function SidebarNav({ user }: SidebarNavProps) {
           ))}
         </SidebarMenu>
       </SidebarContent>
-      {user.role === "user" && currentUser && (
+      {/* Show upload button only for non-admins */}
+      {!isAdmin && (
          <SidebarFooter>
             <FileUploadDialog currentUser={currentUser} />
          </SidebarFooter>
