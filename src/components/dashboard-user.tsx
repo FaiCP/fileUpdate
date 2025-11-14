@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { Download, FileCheck2, FileClock, FileText, FileX2, Hourglass, Edit } from "lucide-react";
+import { Download, FileCheck2, FileClock, FileText, FileX2, Hourglass, Edit, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -47,10 +47,19 @@ export function DashboardUser({ currentUser }: DashboardUserProps) {
   
   const { data: allUploads, isLoading: isLoadingAll } = useCollection<Upload>(allUserUploadsQuery);
 
+  // Query for all users to get active user count
+  const allUsersQuery = useMemoFirebase(() => {
+      if (!firestore) return null;
+      return collection(firestore, 'users');
+  }, [firestore]);
+  const { data: allUsers, isLoading: isLoadingUsers } = useCollection<User>(allUsersQuery);
+
+
   // Memoized calculations for stats
   const pendingCount = useMemo(() => allUploads?.filter(u => u.status === 'PENDIENTE').length ?? 0, [allUploads]);
   const approvedCount = useMemo(() => allUploads?.filter(u => u.status === 'APROBADO').length ?? 0, [allUploads]);
   const correctionsCount = useMemo(() => allUploads?.filter(u => u.status === 'CORRECCIONES').length ?? 0, [allUploads]);
+  const activeUsersCount = useMemo(() => allUsers?.filter(u => u.isActive).length ?? 0, [allUsers]);
 
 
   // Query for the 5 most recent uploads for the table
@@ -67,7 +76,7 @@ export function DashboardUser({ currentUser }: DashboardUserProps) {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Archivos Pendientes</CardTitle>
@@ -96,6 +105,16 @@ export function DashboardUser({ currentUser }: DashboardUserProps) {
           <CardContent>
             <div className="text-2xl font-bold">{isLoadingAll ? '...' : correctionsCount}</div>
             <p className="text-xs text-muted-foreground">Archivos con observaciones</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Usuarios Activos</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{isLoadingUsers ? '...' : activeUsersCount}</div>
+            <p className="text-xs text-muted-foreground">Total en el sistema</p>
           </CardContent>
         </Card>
       </div>
