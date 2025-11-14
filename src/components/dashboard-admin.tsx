@@ -7,9 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { getUserById } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import type { Upload, UploadStatus, User } from "@/lib/types";
-import { FileCheck2, FileClock, FileText, FileX2, Hourglass, Users as UsersIcon } from "lucide-react";
+import { FileCheck2, FileClock, FileX2, Hourglass, Users as UsersIcon } from "lucide-react";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, collectionGroup, query, where, limit, orderBy } from "firebase/firestore";
+import { collection, collectionGroup, query, limit, orderBy } from "firebase/firestore";
 import { useMemo } from "react";
 
 const statusConfig: Record<UploadStatus, { label: string; icon: React.ElementType; color: string }> = {
@@ -39,6 +39,7 @@ const chartData = [
 
 export function DashboardAdmin() {
     const firestore = useFirestore();
+    
     const usersQuery = useMemoFirebase(() => firestore ? collection(firestore, 'users') : null, [firestore]);
     const { data: users, isLoading: usersLoading } = useCollection<User>(usersQuery);
     
@@ -140,7 +141,7 @@ export function DashboardAdmin() {
                         {recentUploads.map(upload => (
                             <TableRow key={upload.id}>
                                 <TableCell className="font-medium truncate max-w-[120px]">{upload.originalName}</TableCell>
-                                <TableCell>{upload.user?.firstName}</TableCell>
+                                <TableCell>{upload.user?.firstName} {upload.user?.lastName}</TableCell>
                                 <TableCell className="text-right">
                                     <StatusBadge status={upload.status} />
                                 </TableCell>
