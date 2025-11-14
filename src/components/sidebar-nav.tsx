@@ -14,7 +14,6 @@ import {
   SidebarFooter
 } from "@/components/ui/sidebar";
 import type { User } from "@/lib/types";
-import { useCurrentUser } from "@/context/UserContext";
 import { FileUploadDialog } from "./file-upload-dialog";
 
 const userNavItems = [
@@ -33,14 +32,9 @@ type SidebarNavProps = {
   user: User;
 };
 
-export function SidebarNav({ user }: SidebarNavProps) {
+export function SidebarNav({ user: currentUser }: SidebarNavProps) {
   const pathname = usePathname();
-  const currentUser = useCurrentUser();
   
-  // Use the reliable currentUser from context to determine role
-  const isAdmin = currentUser?.role === 'admin';
-  const navItems = isAdmin ? adminNavItems : userNavItems;
-
   if (!currentUser) {
     return (
         <Sidebar>
@@ -58,6 +52,9 @@ export function SidebarNav({ user }: SidebarNavProps) {
         </Sidebar>
     )
   }
+
+  const isAdmin = currentUser?.role === 'admin';
+  const navItems = isAdmin ? adminNavItems : userNavItems;
 
   return (
     <Sidebar>

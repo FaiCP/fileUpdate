@@ -9,7 +9,6 @@ import { UserNav } from "@/components/user-nav";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { doc, getDoc } from "firebase/firestore";
 import type { User } from "@/lib/types";
-import { UserContext } from "@/context/UserContext";
 
 export default function MainLayout({
   children,
@@ -43,13 +42,13 @@ export default function MainLayout({
           const userDocSnap = await getDoc(userDocRef);
 
           if (userDocSnap.exists()) {
+            // IMPORTANT: The ID from the document snapshot must be added to the data.
             const userData = { id: userDocSnap.id, ...userDocSnap.data() } as User;
             setCurrentUser(userData);
             setLayoutState('authenticated');
           } else {
             console.error("CRITICAL: User document not found in Firestore for authenticated user:", authUser.uid);
             setLayoutState('unauthenticated');
-            // Optionally, sign out the user here if their DB record is missing
             router.replace('/');
           }
         } catch (error) {
@@ -88,7 +87,6 @@ export default function MainLayout({
 
   // If we are authenticated and have the user data, render the full layout.
   return (
-    <UserContext.Provider value={currentUser}>
       <SidebarProvider>
         <SidebarNav user={currentUser} />
         <SidebarInset className="flex flex-col">
@@ -99,10 +97,15 @@ export default function MainLayout({
               </div>
           </header>
           <main className="flex-1 overflow-y-auto p-4 sm:p-6">
-              {children}
+              {React.Children.map(children, (child) => {
+                if (React.isValidElement(child)) {
+                  // @ts-ignore - cloning to pass the currentUser prop down
+                  return React.cloneElement(child, { currentUser });
+                }
+                return child;
+              })}
           </main>
         </SidebarInset>
       </SidebarProvider>
-    </UserContext.Provider>
   );
 }

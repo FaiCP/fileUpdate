@@ -4,13 +4,11 @@ import * as React from "react";
 import { DashboardAdmin } from "@/components/dashboard-admin";
 import { DashboardUser } from "@/components/dashboard-user";
 import { PageHeader } from "@/components/page-header";
-import { useCurrentUser } from "@/context/UserContext";
+import type { User } from "@/lib/types";
 
-export default function DashboardPage() {
-  // Consume the user data from the context
-  const currentUser = useCurrentUser();
+// This component now receives currentUser as a prop from the layout
+export default function DashboardPage({ currentUser }: { currentUser?: User }) {
 
-  // If for some reason currentUser is not available, show a loading/error state.
   if (!currentUser) {
     return (
       <div className="container mx-auto px-0">
