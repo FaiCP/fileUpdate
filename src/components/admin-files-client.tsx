@@ -25,11 +25,11 @@ import type { Upload, UploadStatus, User } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { FileReviewDialog } from "@/components/file-review-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { useFirestore, updateDocumentNonBlocking } from "@/firebase";
-import { doc } from "firebase/firestore";
+import { useFirestore, updateDocumentNonBlocking, useCollection, useMemoFirebase } from "@/firebase";
+import { doc, collectionGroup } from "firebase/firestore";
 import { statusConfig } from "@/lib/status-config";
 
 type FilterValue = 'all' | 'PENDIENTE' | 'APROBADO' | 'RECHAZADO' | 'EN REVISION' | 'CORRECCIONES';
@@ -55,24 +55,30 @@ type AdminFilesClientPageProps = {
 }
 
 export function AdminFilesClientPage({ initialUploads, initialUsers }: AdminFilesClientPageProps) {
-    const firestore = useFirestore(); // This is safe now because it's only used on user actions.
+    const firestore = useFirestore();
+    const { toast } = useToast();
     
+    // Real-time updates for uploads
+    const uploadsQuery = useMemoFirebase(() => firestore ? collectionGroup(firestore, "uploads") : null, [firestore]);
+    const { data: rtUploads } = useCollection<Upload>(uploadsQuery);
+
     const [isReviewDialogOpen, setReviewDialogOpen] = useState(false);
     const [selectedUpload, setSelectedUpload] = useState<UploadWithUser | undefined>(undefined);
     const [activeFilter, setActiveFilter] = useState<FilterValue>('all');
-    const { toast } = useToast();
+    
+    // Use real-time data if available, otherwise fall back to initial server-fetched data
+    const currentUploads = rtUploads || initialUploads;
 
     // Helper to find a user by ID
     const getUserById = (userId: string, users: User[]): User | undefined => users.find(u => u.id === userId);
 
-    // Enrich uploads with user data once users are loaded
+    // Enrich uploads with user data
     const uploadsWithUsers = useMemo(() => {
-        if (!initialUploads || !initialUsers) return [];
-        return initialUploads.map(upload => ({
+        return currentUploads.map(upload => ({
             ...upload,
-            user: getUserById(upload.userId, initialUsers)
+            user: getUserById(upload.userId, initialUsers) // Assuming users list doesn't change in real-time
         })).sort((a, b) => new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime());
-    }, [initialUploads, initialUsers]);
+    }, [currentUploads, initialUsers]);
 
     const handleReviewClick = (upload: UploadWithUser) => {
         setSelectedUpload(upload);
