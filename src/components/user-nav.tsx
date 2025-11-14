@@ -26,7 +26,9 @@ export function UserNav({ user }: UserNavProps) {
         <Button variant="ghost" className="relative h-10 w-10 rounded-full">
           <Avatar className="h-10 w-10">
             <AvatarImage src={user.avatarUrl} alt={`${user.firstName} ${user.lastName}`} data-ai-hint="person portrait" />
-            <AvatarFallback>{user.firstName.charAt(0)}{user.lastName.charAt(0)}</AvatarFallback>
+            <AvatarFallback>
+              {user.firstName && user.lastName ? `${user.firstName.charAt(0)}${user.lastName.charAt(0)}` : ''}
+            </AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
