@@ -28,7 +28,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState, useMemo, useEffect } from "react";
 import { FileReviewDialog } from "@/components/file-review-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { firestore, useCollection, useMemoFirebase } from "@/firebase";
+import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { doc, collectionGroup, updateDoc } from "firebase/firestore";
 import { statusConfig } from "@/lib/status-config";
 
@@ -56,6 +56,7 @@ type AdminFilesClientPageProps = {
 
 export function AdminFilesClientPage({ initialUploads, initialUsers }: AdminFilesClientPageProps) {
     const { toast } = useToast();
+    const firestore = useFirestore();
     
     // Real-time updates for uploads
     const uploadsQuery = useMemoFirebase(() => firestore ? collectionGroup(firestore, "uploads") : null, [firestore]);

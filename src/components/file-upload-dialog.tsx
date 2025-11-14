@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Upload as UploadIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Upload, User } from "@/lib/types";
-import { firestore } from "@/firebase";
+import { useFirestore } from "@/firebase";
 import { collection, addDoc } from "firebase/firestore";
 import { format } from "date-fns";
 
@@ -46,6 +46,7 @@ const getFileTypeFromExtension = (fileName: string): Upload['fileType'] => {
 
 export function FileUploadDialog({ currentUser }: FileUploadDialogProps) {
     const { toast } = useToast();
+    const firestore = useFirestore();
     const [isOpen, setIsOpen] = useState(false);
     const [files, setFiles] = useState<FileList | null>(null);
 

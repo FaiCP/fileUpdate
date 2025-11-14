@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { auth, firestore } from '@/firebase';
+import { useAuth, useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { collection, getDocs, doc, writeBatch } from 'firebase/firestore';
@@ -18,6 +18,8 @@ import { Info } from 'lucide-react';
 export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const auth = useAuth();
+  const firestore = useFirestore();
   
   const [email, setEmail] = useState('ana.garcia@institucion.com');
   const [password, setPassword] = useState('password');
@@ -50,8 +52,11 @@ export default function LoginPage() {
   }, [firestore, auth]);
 
   useEffect(() => {
-    checkAndSeedDb();
-  }, [checkAndSeedDb]);
+    // We need to wait for firestore to be available
+    if (firestore && auth) {
+      checkAndSeedDb();
+    }
+  }, [firestore, auth, checkAndSeedDb]);
 
 
   const handleCreateAdmin = async () => {
