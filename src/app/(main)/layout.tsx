@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from 'next/navigation';
-import { useUser, useFirestore } from "@/firebase";
+import { useUser, firestore } from "@/firebase";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { SidebarNav } from "@/components/sidebar-nav";
 import { UserNav } from "@/components/user-nav";
@@ -17,7 +17,6 @@ export default function MainLayout({
   children: React.ReactNode;
 }>) {
   const { user: authUser, isUserLoading: isAuthLoading } = useUser();
-  const firestore = useFirestore();
   const router = useRouter();
 
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -38,6 +37,10 @@ export default function MainLayout({
     // Auth user exists, try to fetch Firestore profile if not already fetched
     if (authUser && !currentUser) {
       const fetchUserDocument = async () => {
+        if (!firestore) {
+          console.error("Firestore not available yet");
+          return;
+        }
         const userDocRef = doc(firestore, 'users', authUser.uid);
         try {
           const userDocSnap = await getDoc(userDocRef);

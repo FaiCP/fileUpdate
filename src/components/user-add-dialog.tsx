@@ -25,7 +25,7 @@ type UserData = Omit<User, 'id' | 'avatarUrl' | 'isActive'>;
 type UserAddDialogProps = {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
-  onSave: (user: UserData, userId?: string) => void;
+  onSave: (user: UserData, userId?: string) => Promise<void>;
   user?: User;
 };
 
@@ -87,7 +87,7 @@ export function UserAddDialog({ isOpen, setIsOpen, onSave, user }: UserAddDialog
         try {
             if (user) {
                 // Editing user - no auth changes here, just Firestore
-                onSave(formData as UserData);
+                await onSave(formData as UserData);
             } else if (formData.email) {
                 // Creating new user in an isolated auth instance
                 const tempAppName = `temp-user-creation-${Date.now()}`;
@@ -97,7 +97,7 @@ export function UserAddDialog({ isOpen, setIsOpen, onSave, user }: UserAddDialog
                 try {
                     const userCredential = await createUserWithEmailAndPassword(tempAuth, formData.email, password);
                     const newUserId = userCredential.user.uid;
-                    onSave(formData as UserData, newUserId);
+                    await onSave(formData as UserData, newUserId);
                 } finally {
                     // Clean up the temporary app instance
                     await deleteApp(tempApp);

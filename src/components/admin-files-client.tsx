@@ -28,7 +28,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState, useMemo, useEffect } from "react";
 import { FileReviewDialog } from "@/components/file-review-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { firestore, useCollection, useMemoFirebase } from "@/firebase";
 import { doc, collectionGroup, updateDoc } from "firebase/firestore";
 import { statusConfig } from "@/lib/status-config";
 
@@ -55,7 +55,6 @@ type AdminFilesClientPageProps = {
 }
 
 export function AdminFilesClientPage({ initialUploads, initialUsers }: AdminFilesClientPageProps) {
-    const firestore = useFirestore();
     const { toast } = useToast();
     
     // Real-time updates for uploads
@@ -85,7 +84,7 @@ export function AdminFilesClientPage({ initialUploads, initialUsers }: AdminFile
         setReviewDialogOpen(true);
     };
 
-    const handleUpdateStatus = (upload: UploadWithUser, status: UploadStatus, observations?: string) => {
+    const handleUpdateStatus = async (upload: UploadWithUser, status: UploadStatus, observations?: string) => {
       if (!firestore) {
         toast({ title: "Error", description: "Firestore not available.", variant: "destructive" });
         return;
@@ -100,7 +99,7 @@ export function AdminFilesClientPage({ initialUploads, initialUsers }: AdminFile
         updateData.acceptanceActPath = `/acts/${upload.id}.pdf`; // Dummy path
       }
 
-      updateDoc(uploadRef, updateData);
+      await updateDoc(uploadRef, updateData);
       
       toast({
         title: `Archivo ${status.toLowerCase()}`,

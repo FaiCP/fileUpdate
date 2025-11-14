@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useAuth, useFirestore } from '@/firebase';
+import { auth, firestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { collection, getDocs, doc, writeBatch } from 'firebase/firestore';
@@ -16,8 +16,6 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Info } from 'lucide-react';
 
 export default function LoginPage() {
-  const auth = useAuth();
-  const firestore = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
   

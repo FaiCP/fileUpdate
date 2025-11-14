@@ -24,7 +24,7 @@ type FileReviewDialogProps = {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
   upload: UploadWithUser;
-  onUpdateStatus: (upload: UploadWithUser, status: UploadStatus, observations?: string) => void;
+  onUpdateStatus: (upload: UploadWithUser, status: UploadStatus, observations?: string) => Promise<void>;
 };
 
 export function FileReviewDialog({ isOpen, setIsOpen, upload, onUpdateStatus }: FileReviewDialogProps) {
@@ -38,8 +38,8 @@ export function FileReviewDialog({ isOpen, setIsOpen, upload, onUpdateStatus }: 
   });
 
 
-  const handleAction = (status: UploadStatus) => {
-    onUpdateStatus(upload, status, observations);
+  const handleAction = async (status: UploadStatus) => {
+    await onUpdateStatus(upload, status, observations);
     setIsOpen(false);
   };
 

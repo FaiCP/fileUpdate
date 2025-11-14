@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import type { Upload, UploadStatus, User } from "@/lib/types";
 import { FileUploadDialog } from "@/components/file-upload-dialog";
 import { cn } from "@/lib/utils";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { useCollection, firestore, useMemoFirebase } from "@/firebase";
 import { collection, query, orderBy, limit } from "firebase/firestore";
 
 const statusConfig: Record<UploadStatus, { label: string; icon: React.ElementType; color: string }> = {
@@ -36,24 +36,18 @@ type DashboardUserProps = {
 }
 
 export function DashboardUser({ currentUser }: DashboardUserProps) {
-  const firestore = useFirestore();
   const dummyPdfUrl = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf";
 
   const recentUploadsQuery = useMemoFirebase(() => {
     if (!firestore || !currentUser?.id) return null;
     return query(
       collection(firestore, 'users', currentUser.id, 'uploads'),
+      orderBy('uploadDate', 'desc'),
       limit(5)
     );
   }, [firestore, currentUser.id]);
 
-  const { data: uploadsData, isLoading } = useCollection<Upload>(recentUploadsQuery);
-
-  const recentUploads = useMemo(() => {
-      if (!uploadsData) return [];
-      // Sort on the client side
-      return [...uploadsData].sort((a, b) => new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime());
-  }, [uploadsData]);
+  const { data: recentUploads, isLoading } = useCollection<Upload>(recentUploadsQuery);
 
   return (
     <div className="space-y-6">

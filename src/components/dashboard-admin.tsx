@@ -8,7 +8,7 @@ import { getUserById } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import type { Upload, UploadStatus, User } from "@/lib/types";
 import { FileCheck2, FileClock, FileText, FileX2, Hourglass, Users as UsersIcon } from "lucide-react";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { useCollection, firestore, useMemoFirebase } from "@/firebase";
 import { collection, collectionGroup, query, where, limit, orderBy } from "firebase/firestore";
 import { useMemo } from "react";
 
@@ -38,8 +38,6 @@ const chartData = [
 ];
 
 export function DashboardAdmin() {
-    const firestore = useFirestore();
-    
     const usersQuery = useMemoFirebase(() => firestore ? collection(firestore, 'users') : null, [firestore]);
     const { data: users, isLoading: usersLoading } = useCollection<User>(usersQuery);
     
@@ -47,16 +45,14 @@ export function DashboardAdmin() {
     const { data: allUploads, isLoading: uploadsLoading } = useCollection<Upload>(allUploadsQuery);
     
     const recentUploadsQuery = useMemoFirebase(() => 
-        firestore ? query(collectionGroup(firestore, 'uploads'), limit(5)) : null,
+        firestore ? query(collectionGroup(firestore, 'uploads'), orderBy('uploadDate', 'desc'), limit(5)) : null,
         [firestore]
     );
     const { data: recentUploadsData, isLoading: recentUploadsLoading } = useCollection<Upload>(recentUploadsQuery);
 
     const recentUploads = useMemo(() => {
         if (!recentUploadsData || !users) return [];
-        const enriched = recentUploadsData.map(u => ({ ...u, user: getUserById(u.userId, users) }));
-        // Sort on the client side
-        return enriched.sort((a, b) => new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime());
+        return recentUploadsData.map(u => ({ ...u, user: getUserById(u.userId, users) }));
     }, [recentUploadsData, users]);
 
 
