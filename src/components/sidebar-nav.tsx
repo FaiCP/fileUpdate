@@ -14,6 +14,8 @@ import {
   SidebarFooter
 } from "@/components/ui/sidebar";
 import type { User } from "@/lib/types";
+import { useCurrentUser } from "@/context/UserContext";
+import { FileUploadDialog } from "./file-upload-dialog";
 
 const userNavItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -34,6 +36,7 @@ type SidebarNavProps = {
 export function SidebarNav({ user }: SidebarNavProps) {
   const pathname = usePathname();
   const navItems = user.role === "admin" ? adminNavItems : userNavItems;
+  const currentUser = useCurrentUser();
 
   return (
     <Sidebar>
@@ -63,9 +66,9 @@ export function SidebarNav({ user }: SidebarNavProps) {
           ))}
         </SidebarMenu>
       </SidebarContent>
-      {user.role === "user" && (
+      {user.role === "user" && currentUser && (
          <SidebarFooter>
-            {/* The upload button can be handled by a specific component, like a dialog trigger */}
+            <FileUploadDialog currentUser={currentUser} />
          </SidebarFooter>
       )}
     </Sidebar>
