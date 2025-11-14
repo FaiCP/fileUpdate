@@ -23,6 +23,7 @@ export default function MainLayout({
   const [layoutState, setLayoutState] = useState<'loading' | 'authenticated' | 'unauthenticated'>('loading');
 
   useEffect(() => {
+    // CRITICAL: Wait for both auth and firestore to be ready.
     if (isAuthLoading || !firestore) {
       setLayoutState('loading');
       return;
@@ -34,7 +35,7 @@ export default function MainLayout({
       return;
     }
 
-    // Auth user exists, try to fetch Firestore profile if not already fetched
+    // Auth user exists, but we haven't fetched the Firestore profile yet.
     if (authUser && !currentUser) {
       const fetchUserDocument = async () => {
         const userDocRef = doc(firestore, 'users', authUser.uid);
@@ -48,6 +49,8 @@ export default function MainLayout({
             setLayoutState('authenticated');
           } else {
             console.error("CRITICAL: User document not found in Firestore for authenticated user:", authUser.uid);
+            // This is a critical state error. Maybe the DB record wasn't created.
+            // Forcing a re-login might not fix it, but it's better than getting stuck.
             setLayoutState('unauthenticated');
             router.replace('/');
           }
