@@ -40,9 +40,7 @@ export default function UserFilesPage() {
   const firestore = useFirestore();
 
   const userUploadsQuery = useMemoFirebase(() => {
-    if (!currentUser) return null;
-    // NOTE: This assumes uploads are in a subcollection under the user.
-    // This is good for security rules but requires a collectionGroup query for admins.
+    if (!firestore || !currentUser?.uid) return null;
     return collection(firestore, 'users', currentUser.uid, 'uploads');
   }, [currentUser, firestore]);
 
@@ -93,7 +91,7 @@ export default function UserFilesPage() {
             </TableHeader>
             <TableBody>
               {isLoading && <TableRow><TableCell colSpan={5}>Cargando archivos...</TableCell></TableRow>}
-              {userUploads && userUploads.map((upload) => (
+              {!isLoading && userUploads && userUploads.map((upload) => (
                 <TableRow key={upload.id}>
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-3">

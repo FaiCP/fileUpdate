@@ -33,6 +33,7 @@ export function UserAddDialog({ isOpen, setIsOpen, onSave, user }: UserAddDialog
     const { toast } = useToast();
     const [formData, setFormData] = useState<Partial<UserData>>({});
     const [password, setPassword] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
@@ -71,6 +72,7 @@ export function UserAddDialog({ isOpen, setIsOpen, onSave, user }: UserAddDialog
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+        setIsSubmitting(true);
 
         if (!user && !password) {
             toast({
@@ -78,6 +80,7 @@ export function UserAddDialog({ isOpen, setIsOpen, onSave, user }: UserAddDialog
                 title: "Error",
                 description: "La contraseña es obligatoria para nuevos usuarios.",
             });
+            setIsSubmitting(false);
             return;
         }
 
@@ -116,6 +119,8 @@ export function UserAddDialog({ isOpen, setIsOpen, onSave, user }: UserAddDialog
                 title: "Error al guardar",
                 description: error.code === 'auth/email-already-in-use' ? 'Este correo electrónico ya está en uso.' : (error.message || "No se pudo crear o actualizar el usuario."),
             });
+        } finally {
+            setIsSubmitting(false);
         }
     }
 
@@ -184,7 +189,7 @@ export function UserAddDialog({ isOpen, setIsOpen, onSave, user }: UserAddDialog
             </div>
             <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancelar</Button>
-                <Button type="submit">Guardar Cambios</Button>
+                <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Guardando...' : 'Guardar Cambios'}</Button>
             </DialogFooter>
         </form>
       </DialogContent>

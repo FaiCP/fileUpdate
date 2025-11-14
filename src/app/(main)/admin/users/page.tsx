@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { MoreHorizontal, PlusCircle, Search, UserCog } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -51,14 +51,14 @@ export default function AdminUsersPage() {
     setUserDialogOpen(false);
   };
 
-  const handleSaveUser = (userData: Omit<User, 'id' | 'avatarUrl' | 'activo'>, newUserId?: string) => {
+  const handleSaveUser = (userData: Omit<User, 'id' | 'avatarUrl' | 'isActive'>, newUserId?: string) => {
     if (!firestore) return;
     
     if (editingUser) {
       // Edit existing user
       const userRef = doc(firestore, "users", editingUser.id);
       updateDocumentNonBlocking(userRef, userData);
-      toast({ title: "Usuario actualizado", description: `Los datos de ${userData.nombres} se han guardado.` });
+      toast({ title: "Usuario actualizado", description: `Los datos de ${userData.firstName} se han guardado.` });
 
     } else if (newUserId) {
       // Add new user (the auth part is handled in the dialog)
@@ -66,51 +66,51 @@ export default function AdminUsersPage() {
       const newUser: User = {
         ...(userData as User),
         id: newUserId,
-        activo: true,
+        isActive: true,
         avatarUrl: `https://picsum.photos/seed/${newUserId}/100/100`,
       };
       setDocumentNonBlocking(newUserRef, newUser, { merge: false });
 
       // If it's an admin, add to the roles collection
-      if (newUser.rol === 'admin') {
+      if (newUser.role === 'admin') {
         const adminRoleRef = doc(firestore, "roles_admin", newUserId);
         setDocumentNonBlocking(adminRoleRef, { grantedAt: new Date() }, { merge: true });
       }
-      toast({ title: "Usuario creado", description: `El usuario ${userData.nombres} ha sido añadido.` });
+      toast({ title: "Usuario creado", description: `El usuario ${userData.firstName} ha sido añadido.` });
     }
   };
 
   const toggleUserStatus = (user: User) => {
     if (!firestore) return;
     const userRef = doc(firestore, "users", user.id);
-    updateDocumentNonBlocking(userRef, { activo: !user.activo });
-    toast({ title: "Estado cambiado", description: `El usuario ahora está ${!user.activo ? 'activo' : 'inactivo'}.` });
+    updateDocumentNonBlocking(userRef, { isActive: !user.isActive });
+    toast({ title: "Estado cambiado", description: `El usuario ahora está ${!user.isActive ? 'activo' : 'inactivo'}.` });
   };
   
   const promoteToAdmin = (user: User) => {
     if (!firestore) return;
     const userRef = doc(firestore, "users", user.id);
-    updateDocumentNonBlocking(userRef, { rol: 'admin' });
+    updateDocumentNonBlocking(userRef, { role: 'admin' });
     // Also add to roles_admin collection for security rule check
     const adminRoleRef = doc(firestore, "roles_admin", user.id);
     setDocumentNonBlocking(adminRoleRef, { grantedAt: new Date() }, { merge: true });
-    toast({ title: "Usuario promovido", description: `${user.nombres} ahora es administrador.` });
+    toast({ title: "Usuario promovido", description: `${user.firstName} ahora es administrador.` });
   };
   
   const demoteToUser = (user: User) => {
     if (!firestore) return;
     const userRef = doc(firestore, "users", user.id);
-    updateDocumentNonBlocking(userRef, { rol: 'user' });
+    updateDocumentNonBlocking(userRef, { role: 'user' });
     const adminRoleRef = doc(firestore, "roles_admin", user.id);
     deleteDocumentNonBlocking(adminRoleRef);
-    toast({ title: "Usuario degradado", description: `${user.nombres} ahora es un usuario estándar.` });
+    toast({ title: "Usuario degradado", description: `${user.firstName} ahora es un usuario estándar.` });
   };
 
 
   const filteredUsers = useMemo(() => {
     if (!users) return [];
     return users.filter(user =>
-      `${user.nombres} ${user.apellidos}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      `${user.firstName} ${user.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [users, searchTerm]);
@@ -178,19 +178,19 @@ export default function AdminUsersPage() {
                     <div className="flex items-center gap-3">
                       <Avatar className="hidden h-9 w-9 sm:flex">
                         <AvatarImage src={user.avatarUrl} alt="Avatar" data-ai-hint="person portrait" />
-                        <AvatarFallback>{user.nombres.charAt(0)}{user.apellidos.charAt(0)}</AvatarFallback>
+                        <AvatarFallback>{user.firstName?.charAt(0)}{user.lastName?.charAt(0)}</AvatarFallback>
                       </Avatar>
                       <div className="grid gap-0.5">
-                        <span className="font-semibold">{user.nombres} {user.apellidos}</span>
+                        <span className="font-semibold">{user.firstName} {user.lastName}</span>
                         <span className="text-sm text-muted-foreground">{user.email}</span>
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className="hidden md:table-cell">{user.departamento}</TableCell>
-                  <TableCell className="hidden sm:table-cell capitalize">{user.rol}</TableCell>
+                  <TableCell className="hidden md:table-cell">{user.department}</TableCell>
+                  <TableCell className="hidden sm:table-cell capitalize">{user.role}</TableCell>
                   <TableCell className="hidden sm:table-cell">
-                    <Badge variant={user.activo ? "default" : "destructive"} className={user.activo ? "bg-green-600" : ""}>
-                      {user.activo ? "Activo" : "Inactivo"}
+                    <Badge variant={user.isActive ? "default" : "destructive"} className={user.isActive ? "bg-green-600" : ""}>
+                      {user.isActive ? "Activo" : "Inactivo"}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
@@ -204,11 +204,11 @@ export default function AdminUsersPage() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Acciones</DropdownMenuLabel>
                         <DropdownMenuItem onClick={() => handleOpenDialog(user)}>Editar</DropdownMenuItem>
-                        <DropdownMenuItem className={user.activo ? "text-destructive" : ""} onClick={() => toggleUserStatus(user)}>
-                          {user.activo ? "Desactivar" : "Activar"}
+                        <DropdownMenuItem className={user.isActive ? "text-destructive" : ""} onClick={() => toggleUserStatus(user)}>
+                          {user.isActive ? "Desactivar" : "Activar"}
                         </DropdownMenuItem>
                          <DropdownMenuSeparator />
-                        {user.rol === 'admin' ? (
+                        {user.role === 'admin' ? (
                           <DropdownMenuItem onClick={() => demoteToUser(user)}>
                             <UserCog className="mr-2 h-4 w-4" />
                             Hacer Usuario
