@@ -34,7 +34,7 @@ export function FileReviewDialog({ isOpen, setIsOpen, upload, onUpdateStatus, al
 
   const handlePrint = useReactToPrint({
     content: () => actaRef.current,
-    documentTitle: `acta-${upload.id}-${upload.user?.nombres}`,
+    documentTitle: `acta-${upload.id}-${upload.user?.firstName}`,
     onAfterPrint: () => console.log("printed"),
   });
 
@@ -50,15 +50,15 @@ export function FileReviewDialog({ isOpen, setIsOpen, upload, onUpdateStatus, al
         <DialogHeader>
           <DialogTitle className="font-headline text-2xl">Revisar Archivo y Generar Acta</DialogTitle>
           <DialogDescription>
-            {upload.originalName} - Subido por {upload.user?.nombres} {upload.user?.apellidos}
+            {upload.originalName} - Subido por {upload.user?.firstName} {upload.user?.lastName}
           </DialogDescription>
         </DialogHeader>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1 min-h-0">
             <div className="md:col-span-1 flex flex-col space-y-4">
                 <h3 className="font-semibold text-lg">Acciones de Revisión</h3>
                  <div className="space-y-1 text-sm">
-                    <p><strong className="font-medium">Usuario:</strong> {upload.user?.nombres} {upload.user?.apellidos}</p>
-                    <p><strong className="font-medium">Departamento:</strong> {upload.user?.departamento}</p>
+                    <p><strong className="font-medium">Usuario:</strong> {upload.user?.firstName} {upload.user?.lastName}</p>
+                    <p><strong className="font-medium">Departamento:</strong> {upload.user?.department}</p>
                     <p><strong className="font-medium">Fecha de subida:</strong> {upload.uploadDate}</p>
                     <p><strong className="font-medium">Uso:</strong> <span className="capitalize">{upload.usage}</span></p>
                 </div>

@@ -33,7 +33,7 @@ type SidebarNavProps = {
 
 export function SidebarNav({ user }: SidebarNavProps) {
   const pathname = usePathname();
-  const navItems = user.rol === "admin" ? adminNavItems : userNavItems;
+  const navItems = user.role === "admin" ? adminNavItems : userNavItems;
 
   return (
     <Sidebar>
@@ -63,7 +63,7 @@ export function SidebarNav({ user }: SidebarNavProps) {
           ))}
         </SidebarMenu>
       </SidebarContent>
-      {user.rol === "user" && (
+      {user.role === "user" && (
          <SidebarFooter>
             {/* The upload button can be handled by a specific component, like a dialog trigger */}
          </SidebarFooter>

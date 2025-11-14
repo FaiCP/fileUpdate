@@ -59,7 +59,7 @@ export function DashboardUser({ currentUser }: DashboardUserProps) {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="font-headline text-2xl">Bienvenido, {currentUser.nombres}</CardTitle>
+          <CardTitle className="font-headline text-2xl">Bienvenido, {currentUser.firstName}</CardTitle>
           <CardDescription>¿Listo para empezar? Sube tus archivos para que sean revisados.</CardDescription>
         </CardHeader>
         <CardContent>

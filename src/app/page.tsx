@@ -95,13 +95,13 @@ export default function LoginPage() {
         // 3. Create Firestore user document
         const newUser: User = {
             id: userId,
-            nombres: 'Ana',
-            apellidos: 'García (Admin)',
+            firstName: 'Ana',
+            lastName: 'García (Admin)',
             email: adminEmail,
-            cedula: '00000000-0',
-            departamento: 'Administración',
-            rol: 'admin',
-            activo: true,
+            identification: '00000000-0',
+            department: 'Administración',
+            role: 'admin',
+            isActive: true,
             avatarUrl: `https://picsum.photos/seed/${userId}/100/100`,
         };
         const userRef = doc(firestore, "users", userId);

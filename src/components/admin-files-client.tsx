@@ -159,12 +159,12 @@ export function AdminFilesClientPage({ initialUploads, initialUsers }: AdminFile
                                 <div>
                                     <div className="font-semibold">{upload.originalName}</div>
                                     <div className="text-sm text-muted-foreground sm:hidden">
-                                      {upload.user?.nombres} {upload.user?.apellidos}
+                                      {upload.user?.firstName} {upload.user?.lastName}
                                     </div>
                                 </div>
                             </div>
                           </TableCell>
-                          <TableCell className="hidden sm:table-cell">{upload.user?.nombres} {upload.user?.apellidos}</TableCell>
+                          <TableCell className="hidden sm:table-cell">{upload.user?.firstName} {upload.user?.lastName}</TableCell>
                           <TableCell className="hidden sm:table-cell">
                             <StatusBadge status={upload.status} />
                           </TableCell>

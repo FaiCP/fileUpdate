@@ -23,7 +23,7 @@ export default function DashboardPage() {
     );
   }
 
-  const isAdmin = currentUser.rol === 'admin';
+  const isAdmin = currentUser.role === 'admin';
 
   return (
     <div className="container mx-auto px-0">

@@ -62,7 +62,7 @@ export function DashboardAdmin() {
 
     const pendingCount = allUploads?.filter(u => u.status === 'PENDIENTE').length ?? 0;
     const approvedCount = allUploads?.filter(u => u.status === 'APROBADO').length ?? 0;
-    const activeUsersCount = users?.filter(u => u.activo).length ?? 0;
+    const activeUsersCount = users?.filter(u => u.isActive).length ?? 0;
 
   return (
     <div className="space-y-6">
@@ -143,7 +143,7 @@ export function DashboardAdmin() {
                         {recentUploads.map(upload => (
                             <TableRow key={upload.id}>
                                 <TableCell className="font-medium truncate max-w-[120px]">{upload.originalName}</TableCell>
-                                <TableCell>{upload.user?.nombres}</TableCell>
+                                <TableCell>{upload.user?.firstName}</TableCell>
                                 <TableCell className="text-right">
                                     <StatusBadge status={upload.status} />
                                 </TableCell>

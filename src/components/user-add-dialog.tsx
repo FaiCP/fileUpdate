@@ -20,7 +20,7 @@ import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
 import { firebaseConfig } from "@/firebase/config";
 
 
-type UserData = Omit<User, 'id' | 'avatarUrl' | 'activo'>;
+type UserData = Omit<User, 'id' | 'avatarUrl' | 'isActive'>;
 
 type UserAddDialogProps = {
   isOpen: boolean;
@@ -38,22 +38,22 @@ export function UserAddDialog({ isOpen, setIsOpen, onSave, user }: UserAddDialog
         if (isOpen) {
             if (user) {
                 setFormData({
-                    nombres: user.nombres,
-                    apellidos: user.apellidos,
+                    firstName: user.firstName,
+                    lastName: user.lastName,
                     email: user.email,
-                    cedula: user.cedula,
-                    departamento: user.departamento,
-                    rol: user.rol,
+                    identification: user.identification,
+                    department: user.department,
+                    role: user.role,
                 });
                 setPassword(''); // Clear password for existing user edit
             } else {
                 setFormData({
-                    rol: 'user',
-                    departamento: 'Recursos Humanos',
-                    nombres: '',
-                    apellidos: '',
+                    role: 'user',
+                    department: 'Recursos Humanos',
+                    firstName: '',
+                    lastName: '',
                     email: '',
-                    cedula: '',
+                    identification: '',
                 });
                 setPassword('');
             }
@@ -106,7 +106,7 @@ export function UserAddDialog({ isOpen, setIsOpen, onSave, user }: UserAddDialog
             
             toast({
                 title: user ? "Usuario Actualizado" : "Usuario Creado",
-                description: `El usuario ${formData.nombres} ha sido ${user ? 'actualizado' : 'creado'} correctamente.`,
+                description: `El usuario ${formData.firstName} ha sido ${user ? 'actualizado' : 'creado'} correctamente.`,
             });
             setIsOpen(false);
         } catch(error: any) {
@@ -132,27 +132,27 @@ export function UserAddDialog({ isOpen, setIsOpen, onSave, user }: UserAddDialog
             <div className="grid gap-6 py-4">
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div className="space-y-2">
-                        <Label htmlFor="nombres">Nombres</Label>
-                        <Input id="nombres" placeholder="Ej: Ana" required value={formData.nombres || ''} onChange={handleChange} />
+                        <Label htmlFor="firstName">Nombres</Label>
+                        <Input id="firstName" placeholder="Ej: Ana" required value={formData.firstName || ''} onChange={handleChange} />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="apellidos">Apellidos</Label>
-                        <Input id="apellidos" placeholder="Ej: García" required value={formData.apellidos || ''} onChange={handleChange} />
+                        <Label htmlFor="lastName">Apellidos</Label>
+                        <Input id="lastName" placeholder="Ej: García" required value={formData.lastName || ''} onChange={handleChange} />
                     </div>
                 </div>
                  <div className="space-y-2">
                     <Label htmlFor="email">Correo Electrónico</Label>
                     <Input id="email" type="email" placeholder="Ej: ana.garcia@institucion.com" required value={formData.email || ''} onChange={handleChange} disabled={!!user}/>
                 </div>
-                <div className="space-y-2">
-                    <Label htmlFor="cedula">Cédula</Label>
-                    <Input id="cedula" placeholder="Ej: 12345678-9" required value={formData.cedula || ''} onChange={handleChange} />
+                 <div className="space-y-2">
+                    <Label htmlFor="identification">Cédula</Label>
+                    <Input id="identification" placeholder="Ej: 12345678-9" required value={formData.identification || ''} onChange={handleChange} />
                 </div>
                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div className="space-y-2">
-                        <Label htmlFor="departamento">Departamento</Label>
-                        <Select name="departamento" required value={formData.departamento || ''} onValueChange={(value) => handleSelectChange('departamento', value)}>
-                            <SelectTrigger id="departamento">
+                        <Label htmlFor="department">Departamento</Label>
+                        <Select name="department" required value={formData.department || ''} onValueChange={(value) => handleSelectChange('department', value)}>
+                            <SelectTrigger id="department">
                             <SelectValue placeholder="Selecciona un departamento" />
                             </SelectTrigger>
                             <SelectContent>
@@ -165,9 +165,9 @@ export function UserAddDialog({ isOpen, setIsOpen, onSave, user }: UserAddDialog
                         </Select>
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="rol">Rol</Label>
-                        <Select name="rol" required value={formData.rol || ''} onValueChange={(value) => handleSelectChange('rol', value)}>
-                            <SelectTrigger id="rol">
+                        <Label htmlFor="role">Rol</Label>
+                        <Select name="role" required value={formData.role || ''} onValueChange={(value) => handleSelectChange('role', value)}>
+                            <SelectTrigger id="role">
                             <SelectValue placeholder="Selecciona un rol" />
                             </SelectTrigger>
                             <SelectContent>

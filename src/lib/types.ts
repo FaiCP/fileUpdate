@@ -2,13 +2,13 @@ import { Timestamp } from "firebase/firestore";
 
 export type User = {
   id: string; // Changed to string to match Firebase Auth UID
-  nombres: string;
-  apellidos: string;
-  cedula: string;
-  departamento: string;
+  firstName: string;
+  lastName: string;
+  identification: string;
+  department: string;
   email: string;
-  rol: 'user' | 'admin';
-  activo: boolean;
+  role: 'user' | 'admin';
+  isActive: boolean;
   avatarUrl?: string;
   dateJoined?: Timestamp;
 };

@@ -17,7 +17,7 @@ export const ActaPreview = forwardRef<HTMLDivElement, ActaPreviewProps>(({ uploa
   const tableRows = Array.from({ length: 10 }).map((_, index) => ({
     caja: index === 0 ? '1' : '',
     bibliorato: index === 0 ? '2024-A' : '',
-    unidad: index === 0 ? user?.departamento : '',
+    unidad: index === 0 ? user?.department : '',
     serie: index === 0 ? 'Contratos' : '',
     año: index === 0 ? new Date(upload.uploadDate).getFullYear() : '',
     descripcion: index === 0 ? upload.originalName : '',

@@ -30,8 +30,8 @@ export default function AdminHistoryPage() {
         const counts: { [key: string]: number } = {};
         uploads.forEach(upload => {
             const user = getUserById(upload.userId, users);
-            if (user && user.departamento) {
-                counts[user.departamento] = (counts[user.departamento] || 0) + 1;
+            if (user && user.department) {
+                counts[user.department] = (counts[user.department] || 0) + 1;
             }
         });
         return Object.entries(counts).map(([name, total]) => ({ name, total }));
@@ -142,8 +142,8 @@ export default function AdminHistoryPage() {
                         {uploadsWithUsers.map((upload) => (
                             <TableRow key={upload.id}>
                                 <TableCell className="font-medium">{upload.originalName}</TableCell>
-                                <TableCell>{upload.user ? `${upload.user.nombres} ${upload.user.apellidos}` : 'Usuario Desconocido'}</TableCell>
-                                <TableCell className="hidden md:table-cell">{upload.user?.departamento}</TableCell>
+                                <TableCell>{upload.user ? `${upload.user.firstName} ${upload.user.lastName}` : 'Usuario Desconocido'}</TableCell>
+                                <TableCell className="hidden md:table-cell">{upload.user?.department}</TableCell>
                                 <TableCell className="hidden sm:table-cell">{upload.status}</TableCell>
                                 <TableCell className="hidden lg:cell text-right">{upload.uploadDate}</TableCell>
                             </TableRow>
