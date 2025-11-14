@@ -121,7 +121,7 @@ export function DashboardUser({ currentUser }: DashboardUserProps) {
 
 
       <Card>
-        <CardHeader className="flex items-center justify-between">
+        <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle>Historial Reciente</CardTitle>
             <CardDescription>Tus 5 envíos más recientes.</CardDescription>
