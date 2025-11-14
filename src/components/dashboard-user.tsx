@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { Download, FileCheck2, FileClock, FileText, FileX2, Hourglass, Edit, Users } from "lucide-react";
+import { Download, FileCheck2, FileClock, FileText, FileX2, Hourglass, Edit } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,29 +39,6 @@ export function DashboardUser({ currentUser }: DashboardUserProps) {
   const dummyPdfUrl = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf";
   const firestore = useFirestore();
 
-  // Query for all user uploads to calculate stats
-  const allUserUploadsQuery = useMemoFirebase(() => {
-    if (!firestore || !currentUser?.id) return null;
-    return collection(firestore, 'users', currentUser.id, 'uploads');
-  }, [firestore, currentUser.id]);
-  
-  const { data: allUploads, isLoading: isLoadingAll } = useCollection<Upload>(allUserUploadsQuery);
-
-  // Query for all users to get active user count
-  const allUsersQuery = useMemoFirebase(() => {
-      if (!firestore) return null;
-      return collection(firestore, 'users');
-  }, [firestore]);
-  const { data: allUsers, isLoading: isLoadingUsers } = useCollection<User>(allUsersQuery);
-
-
-  // Memoized calculations for stats
-  const pendingCount = useMemo(() => allUploads?.filter(u => u.status === 'PENDIENTE').length ?? 0, [allUploads]);
-  const approvedCount = useMemo(() => allUploads?.filter(u => u.status === 'APROBADO').length ?? 0, [allUploads]);
-  const correctionsCount = useMemo(() => allUploads?.filter(u => u.status === 'CORRECCIONES').length ?? 0, [allUploads]);
-  const activeUsersCount = useMemo(() => allUsers?.filter(u => u.isActive).length ?? 0, [allUsers]);
-
-
   // Query for the 5 most recent uploads for the table
   const recentUploadsQuery = useMemoFirebase(() => {
     if (!firestore || !currentUser?.id) return null;
@@ -76,48 +53,17 @@ export function DashboardUser({ currentUser }: DashboardUserProps) {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Archivos Pendientes</CardTitle>
-            <Hourglass className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{isLoadingAll ? '...' : pendingCount}</div>
-            <p className="text-xs text-muted-foreground">Esperando revisión</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Archivos Aprobados</CardTitle>
-            <FileCheck2 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{isLoadingAll ? '...' : approvedCount}</div>
-            <p className="text-xs text-muted-foreground">Actas generadas y listas</p>
-          </CardContent>
-        </Card>
-         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Requieren Corrección</CardTitle>
-            <Edit className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{isLoadingAll ? '...' : correctionsCount}</div>
-            <p className="text-xs text-muted-foreground">Archivos con observaciones</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Usuarios Activos</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{isLoadingUsers ? '...' : activeUsersCount}</div>
-            <p className="text-xs text-muted-foreground">Total en el sistema</p>
-          </CardContent>
-        </Card>
-      </div>
+       <Card>
+        <CardHeader>
+          <CardTitle className="font-headline text-3xl">¡Bienvenido, {currentUser.firstName}!</CardTitle>
+          <CardDescription>
+            Desde aquí puedes subir tus archivos para que sean revisados y aprobados.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="text-center">
+            <FileUploadDialog currentUser={currentUser} />
+        </CardContent>
+      </Card>
 
 
       <Card>
