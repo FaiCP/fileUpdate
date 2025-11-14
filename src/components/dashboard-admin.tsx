@@ -40,18 +40,14 @@ const chartData = [
 export function DashboardAdmin() {
     const firestore = useFirestore();
     
-    // Get all users
-    const { data: users, isLoading: usersLoading } = useCollection<User>(
-        useMemoFirebase(() => collection(firestore, 'users'), [firestore])
-    );
+    const usersQuery = useMemoFirebase(() => firestore ? collection(firestore, 'users') : null, [firestore]);
+    const { data: users, isLoading: usersLoading } = useCollection<User>(usersQuery);
     
-    // Get all uploads
-    const uploadsQuery = useMemoFirebase(() => collectionGroup(firestore, 'uploads'), [firestore]);
-    const { data: allUploads, isLoading: uploadsLoading } = useCollection<Upload>(uploadsQuery);
+    const allUploadsQuery = useMemoFirebase(() => firestore ? collectionGroup(firestore, 'uploads') : null, [firestore]);
+    const { data: allUploads, isLoading: uploadsLoading } = useCollection<Upload>(allUploadsQuery);
     
-    // Get recent uploads - REMOVED ORDERBY TO AVOID INDEXING ISSUES
     const recentUploadsQuery = useMemoFirebase(() => 
-        query(collectionGroup(firestore, 'uploads'), limit(5)),
+        firestore ? query(collectionGroup(firestore, 'uploads'), limit(5)) : null,
         [firestore]
     );
     const { data: recentUploadsData, isLoading: recentUploadsLoading } = useCollection<Upload>(recentUploadsQuery);

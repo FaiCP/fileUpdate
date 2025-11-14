@@ -39,7 +39,6 @@ export function DashboardUser({ currentUser }: DashboardUserProps) {
   const firestore = useFirestore();
   const dummyPdfUrl = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf";
 
-  // REMOVED ORDERBY to prevent missing index errors. Sorting is now done on the client.
   const recentUploadsQuery = useMemoFirebase(() => {
     if (!firestore || !currentUser?.id) return null;
     return query(

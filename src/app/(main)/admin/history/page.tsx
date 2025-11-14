@@ -16,8 +16,11 @@ const COLORS = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3
 
 export default function AdminHistoryPage() {
     const firestore = useFirestore();
-    const { data: users, isLoading: usersLoading } = useCollection<UserType>(useMemoFirebase(() => collection(firestore, 'users'), [firestore]));
-    const { data: uploads, isLoading: uploadsLoading } = useCollection<UploadType>(useMemoFirebase(() => collectionGroup(firestore, 'uploads'), [firestore]));
+    const usersQuery = useMemoFirebase(() => firestore ? collection(firestore, 'users') : null, [firestore]);
+    const uploadsQuery = useMemoFirebase(() => firestore ? collectionGroup(firestore, 'uploads') : null, [firestore]);
+    
+    const { data: users, isLoading: usersLoading } = useCollection<UserType>(usersQuery);
+    const { data: uploads, isLoading: uploadsLoading } = useCollection<UploadType>(uploadsQuery);
 
     const totalUploads = uploads?.length || 0;
     const totalUsers = users?.length || 0;
