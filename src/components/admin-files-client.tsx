@@ -25,11 +25,11 @@ import type { Upload, UploadStatus, User } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { FileReviewDialog } from "@/components/file-review-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { useFirestore, updateDocumentNonBlocking, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, doc, collectionGroup } from "firebase/firestore";
+import { useFirestore, updateDocumentNonBlocking } from "@/firebase";
+import { doc } from "firebase/firestore";
 import { statusConfig } from "@/lib/status-config";
 
 type FilterValue = 'all' | 'PENDIENTE' | 'APROBADO' | 'RECHAZADO' | 'EN REVISION' | 'CORRECCIONES';
@@ -55,27 +55,7 @@ type AdminFilesClientPageProps = {
 }
 
 export function AdminFilesClientPage({ initialUploads, initialUsers }: AdminFilesClientPageProps) {
-    const firestore = useFirestore(); // This hook is now safe to call here.
-
-    const [allUploads, setAllUploads] = useState<Upload[]>(initialUploads);
-    const [allUsers, setAllUsers] = useState<User[]>(initialUsers);
-    
-    // Create memoized queries safely, ensuring firestore is available.
-    const usersQuery = useMemoFirebase(() => firestore ? collection(firestore, 'users') : null, [firestore]);
-    const uploadsQuery = useMemoFirebase(() => firestore ? collectionGroup(firestore, 'uploads') : null, [firestore]);
-
-    // Subscribe to live updates using the memoized queries.
-    const { data: liveUsers } = useCollection<User>(usersQuery);
-    const { data: liveUploads } = useCollection<Upload>(uploadsQuery);
-
-    // Update state when live data changes.
-    useEffect(() => {
-        if (liveUsers) setAllUsers(liveUsers);
-    }, [liveUsers]);
-
-    useEffect(() => {
-        if (liveUploads) setAllUploads(liveUploads);
-    }, [liveUploads]);
+    const firestore = useFirestore(); // This is safe now because it's only used on user actions.
     
     const [isReviewDialogOpen, setReviewDialogOpen] = useState(false);
     const [selectedUpload, setSelectedUpload] = useState<UploadWithUser | undefined>(undefined);
@@ -87,12 +67,12 @@ export function AdminFilesClientPage({ initialUploads, initialUsers }: AdminFile
 
     // Enrich uploads with user data once users are loaded
     const uploadsWithUsers = useMemo(() => {
-        if (!allUploads || !allUsers) return [];
-        return allUploads.map(upload => ({
+        if (!initialUploads || !initialUsers) return [];
+        return initialUploads.map(upload => ({
             ...upload,
-            user: getUserById(upload.userId, allUsers)
+            user: getUserById(upload.userId, initialUsers)
         })).sort((a, b) => new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime());
-    }, [allUploads, allUsers]);
+    }, [initialUploads, initialUsers]);
 
     const handleReviewClick = (upload: UploadWithUser) => {
         setSelectedUpload(upload);
@@ -220,7 +200,7 @@ export function AdminFilesClientPage({ initialUploads, initialUsers }: AdminFile
           setIsOpen={setReviewDialogOpen}
           upload={selectedUpload}
           onUpdateStatus={handleUpdateStatus}
-          allUsers={allUsers ?? initialUsers}
+          allUsers={initialUsers}
         />
       )}
     </div>
