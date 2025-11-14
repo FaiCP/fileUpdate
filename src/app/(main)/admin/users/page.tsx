@@ -27,8 +27,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { UserAddDialog } from "@/components/user-add-dialog";
 import type { User } from "@/lib/types";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, doc } from "firebase/firestore";
-import { setDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { collection, doc, setDoc, updateDoc, deleteDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 
 export default function AdminUsersPage() {
@@ -51,58 +50,66 @@ export default function AdminUsersPage() {
     setUserDialogOpen(false);
   };
 
-  const handleSaveUser = (userData: Omit<User, 'id' | 'avatarUrl' | 'isActive'>, newUserId?: string) => {
-    if (!firestore) return;
+  const handleSaveUser = async (userData: Omit<User, 'id' | 'avatarUrl' | 'isActive'>, newUserId?: string) => {
+    if (!firestore) {
+        toast({ title: "Error", description: "El servicio de base de datos no está disponible.", variant: "destructive" });
+        return;
+    }
     
-    if (editingUser) {
-      // Edit existing user
-      const userRef = doc(firestore, "users", editingUser.id);
-      updateDocumentNonBlocking(userRef, userData);
-      toast({ title: "Usuario actualizado", description: `Los datos de ${userData.firstName} se han guardado.` });
+    try {
+        if (editingUser) {
+            // Edit existing user
+            const userRef = doc(firestore, "users", editingUser.id);
+            await updateDoc(userRef, userData);
+            toast({ title: "Usuario actualizado", description: `Los datos de ${userData.firstName} se han guardado.` });
 
-    } else if (newUserId) {
-      // Add new user (the auth part is handled in the dialog)
-      const newUserRef = doc(firestore, "users", newUserId);
-      const newUser: User = {
-        ...(userData as User),
-        id: newUserId,
-        isActive: true,
-        avatarUrl: `https://picsum.photos/seed/${newUserId}/100/100`,
-      };
-      setDocumentNonBlocking(newUserRef, newUser, { merge: false });
+        } else if (newUserId) {
+            // Add new user (the auth part is handled in the dialog)
+            const newUserRef = doc(firestore, "users", newUserId);
+            const newUser: User = {
+                ...(userData as User),
+                id: newUserId,
+                isActive: true,
+                avatarUrl: `https://picsum.photos/seed/${newUserId}/100/100`,
+            };
+            await setDoc(newUserRef, newUser, { merge: false });
 
-      // If it's an admin, add to the roles collection
-      if (newUser.role === 'admin') {
-        const adminRoleRef = doc(firestore, "roles_admin", newUserId);
-        setDocumentNonBlocking(adminRoleRef, { grantedAt: new Date() }, { merge: true });
-      }
-      toast({ title: "Usuario creado", description: `El usuario ${userData.firstName} ha sido añadido.` });
+            // If it's an admin, add to the roles collection
+            if (newUser.role === 'admin') {
+                const adminRoleRef = doc(firestore, "roles_admin", newUserId);
+                await setDoc(adminRoleRef, { grantedAt: new Date() }, { merge: true });
+            }
+            toast({ title: "Usuario creado", description: `El usuario ${userData.firstName} ha sido añadido.` });
+        }
+    } catch (error) {
+        toast({ title: "Error", description: "No se pudo guardar el usuario en la base de datos.", variant: "destructive" });
+        console.error("Error saving user to Firestore: ", error);
     }
   };
 
-  const toggleUserStatus = (user: User) => {
+  const toggleUserStatus = async (user: User) => {
     if (!firestore) return;
     const userRef = doc(firestore, "users", user.id);
-    updateDocumentNonBlocking(userRef, { isActive: !user.isActive });
+    await updateDoc(userRef, { isActive: !user.isActive });
     toast({ title: "Estado cambiado", description: `El usuario ahora está ${!user.isActive ? 'activo' : 'inactivo'}.` });
   };
   
-  const promoteToAdmin = (user: User) => {
+  const promoteToAdmin = async (user: User) => {
     if (!firestore) return;
     const userRef = doc(firestore, "users", user.id);
-    updateDocumentNonBlocking(userRef, { role: 'admin' });
+    await updateDoc(userRef, { role: 'admin' });
     // Also add to roles_admin collection for security rule check
     const adminRoleRef = doc(firestore, "roles_admin", user.id);
-    setDocumentNonBlocking(adminRoleRef, { grantedAt: new Date() }, { merge: true });
+    await setDoc(adminRoleRef, { grantedAt: new Date() }, { merge: true });
     toast({ title: "Usuario promovido", description: `${user.firstName} ahora es administrador.` });
   };
   
-  const demoteToUser = (user: User) => {
+  const demoteToUser = async (user: User) => {
     if (!firestore) return;
     const userRef = doc(firestore, "users", user.id);
-    updateDocumentNonBlocking(userRef, { role: 'user' });
+    await updateDoc(userRef, { role: 'user' });
     const adminRoleRef = doc(firestore, "roles_admin", user.id);
-    deleteDocumentNonBlocking(adminRoleRef);
+    await deleteDoc(adminRoleRef);
     toast({ title: "Usuario degradado", description: `${user.firstName} ahora es un usuario estándar.` });
   };
 

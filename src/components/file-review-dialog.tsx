@@ -25,10 +25,9 @@ type FileReviewDialogProps = {
   setIsOpen: (open: boolean) => void;
   upload: UploadWithUser;
   onUpdateStatus: (upload: UploadWithUser, status: UploadStatus, observations?: string) => void;
-  allUsers: User[]; // allUsers is passed for simplicity, though upload.user should be sufficient
 };
 
-export function FileReviewDialog({ isOpen, setIsOpen, upload, onUpdateStatus, allUsers }: FileReviewDialogProps) {
+export function FileReviewDialog({ isOpen, setIsOpen, upload, onUpdateStatus }: FileReviewDialogProps) {
   const [observations, setObservations] = useState(upload.observations || "");
   const actaRef = useRef<HTMLDivElement>(null);
 

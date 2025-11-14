@@ -18,8 +18,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Upload as UploadIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Upload, User } from "@/lib/types";
-import { useFirestore, addDocumentNonBlocking } from "@/firebase";
-import { collection } from "firebase/firestore";
+import { useFirestore } from "@/firebase";
+import { collection, addDoc } from "firebase/firestore";
 import { format } from "date-fns";
 
 type FileUploadDialogProps = {
@@ -50,8 +50,14 @@ export function FileUploadDialog({ currentUser }: FileUploadDialogProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [files, setFiles] = useState<FileList | null>(null);
 
-    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+
+        if (!firestore) {
+            toast({ variant: "destructive", title: "Error", description: "El servicio de base de datos no está disponible." });
+            return;
+        }
+
         const formData = new FormData(e.currentTarget);
         
         if (!files || files.length === 0) {
@@ -66,33 +72,42 @@ export function FileUploadDialog({ currentUser }: FileUploadDialogProps) {
         const usage = formData.get('usage') as Upload['usage'];
         const description = formData.get('description') as string | undefined;
 
-        for (let i = 0; i < files.length; i++) {
-            const file = files[i];
-            const fileType = getFileTypeFromExtension(file.name);
-            const newUploadData: Omit<Upload, 'id'> = {
-                userId: currentUser.id,
-                originalName: file.name,
-                fileType: fileType,
-                usage: usage,
-                description: description,
-                uploadDate: format(new Date(), 'yyyy-MM-dd HH:mm'),
-                status: 'PENDIENTE'
-            };
+        try {
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const fileType = getFileTypeFromExtension(file.name);
+                const newUploadData: Omit<Upload, 'id'> = {
+                    userId: currentUser.id,
+                    originalName: file.name,
+                    fileType: fileType,
+                    usage: usage,
+                    description: description,
+                    uploadDate: format(new Date(), 'yyyy-MM-dd HH:mm'),
+                    status: 'PENDIENTE'
+                };
 
-            // In a real app, you would also upload the file to Firebase Storage
-            // and get a download URL. Here we just create the Firestore document.
-            const uploadsCollectionRef = collection(firestore, 'users', currentUser.id, 'uploads');
-            addDocumentNonBlocking(uploadsCollectionRef, newUploadData);
+                // In a real app, you would also upload the file to Firebase Storage
+                // and get a download URL. Here we just create the Firestore document.
+                const uploadsCollectionRef = collection(firestore, 'users', currentUser.id, 'uploads');
+                await addDoc(uploadsCollectionRef, newUploadData);
+            }
+            
+            setIsOpen(false);
+            setFiles(null);
+            (e.target as HTMLFormElement).reset();
+
+            toast({
+                title: `Archivos Subidos (${files.length})`,
+                description: `Tus archivos se han subido y están pendientes de revisión.`,
+            });
+
+        } catch (error) {
+             toast({
+                variant: "destructive",
+                title: "Error al subir archivos",
+                description: "No se pudieron guardar los archivos en la base de datos.",
+            });
         }
-        
-        setIsOpen(false);
-        setFiles(null);
-        (e.target as HTMLFormElement).reset();
-
-        toast({
-            title: `Archivos Subidos (${files.length})`,
-            description: `Tus archivos se han subido y están pendientes de revisión.`,
-        });
     };
 
     return (

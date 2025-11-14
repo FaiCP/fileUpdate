@@ -28,8 +28,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState, useMemo, useEffect } from "react";
 import { FileReviewDialog } from "@/components/file-review-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { useFirestore, updateDocumentNonBlocking, useCollection, useMemoFirebase } from "@/firebase";
-import { doc, collectionGroup } from "firebase/firestore";
+import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { doc, collectionGroup, updateDoc } from "firebase/firestore";
 import { statusConfig } from "@/lib/status-config";
 
 type FilterValue = 'all' | 'PENDIENTE' | 'APROBADO' | 'RECHAZADO' | 'EN REVISION' | 'CORRECCIONES';
@@ -100,7 +100,7 @@ export function AdminFilesClientPage({ initialUploads, initialUsers }: AdminFile
         updateData.acceptanceActPath = `/acts/${upload.id}.pdf`; // Dummy path
       }
 
-      updateDocumentNonBlocking(uploadRef, updateData);
+      updateDoc(uploadRef, updateData);
       
       toast({
         title: `Archivo ${status.toLowerCase()}`,
@@ -206,7 +206,6 @@ export function AdminFilesClientPage({ initialUploads, initialUsers }: AdminFile
           setIsOpen={setReviewDialogOpen}
           upload={selectedUpload}
           onUpdateStatus={handleUpdateStatus}
-          allUsers={initialUsers}
         />
       )}
     </div>
