@@ -13,7 +13,7 @@ import {
   SidebarMenuButton,
   SidebarFooter
 } from "@/components/ui/sidebar";
-import type { User } from "@/lib/types";
+import { useCurrentUser } from "@/context/UserContext";
 import { FileUploadDialog } from "./file-upload-dialog";
 
 const userNavItems = [
@@ -28,12 +28,9 @@ const adminNavItems = [
   { href: "/admin/history", icon: History, label: "Historial Global" },
 ];
 
-type SidebarNavProps = {
-  user: User;
-};
-
-export function SidebarNav({ user: currentUser }: SidebarNavProps) {
+export function SidebarNav() {
   const pathname = usePathname();
+  const currentUser = useCurrentUser();
   
   if (!currentUser) {
     return (
@@ -85,11 +82,7 @@ export function SidebarNav({ user: currentUser }: SidebarNavProps) {
         </SidebarMenu>
       </SidebarContent>
       {/* Show upload button only for non-admins */}
-      {!isAdmin && (
-         <SidebarFooter>
-            <FileUploadDialog currentUser={currentUser} />
-         </SidebarFooter>
-      )}
+      
     </Sidebar>
   );
 }

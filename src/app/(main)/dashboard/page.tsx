@@ -4,10 +4,11 @@ import * as React from "react";
 import { DashboardAdmin } from "@/components/dashboard-admin";
 import { DashboardUser } from "@/components/dashboard-user";
 import { PageHeader } from "@/components/page-header";
-import type { User } from "@/lib/types";
+import { useCurrentUser } from "@/context/UserContext";
 
 // This component now receives currentUser as a prop from the layout
-export default function DashboardPage({ currentUser }: { currentUser?: User }) {
+export default function DashboardPage() {
+  const currentUser = useCurrentUser();
 
   if (!currentUser) {
     return (

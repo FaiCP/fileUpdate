@@ -9,6 +9,7 @@ import { UserNav } from "@/components/user-nav";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { doc, getDoc } from "firebase/firestore";
 import type { User } from "@/lib/types";
+import { UserContext } from "@/context/UserContext";
 
 export default function MainLayout({
   children,
@@ -49,8 +50,6 @@ export default function MainLayout({
             setLayoutState('authenticated');
           } else {
             console.error("CRITICAL: User document not found in Firestore for authenticated user:", authUser.uid);
-            // This is a critical state error. Maybe the DB record wasn't created.
-            // Forcing a re-login might not fix it, but it's better than getting stuck.
             setLayoutState('unauthenticated');
             router.replace('/');
           }
@@ -90,8 +89,9 @@ export default function MainLayout({
 
   // If we are authenticated and have the user data, render the full layout.
   return (
+    <UserContext.Provider value={currentUser}>
       <SidebarProvider>
-        <SidebarNav user={currentUser} />
+        <SidebarNav />
         <SidebarInset className="flex flex-col">
           <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b bg-background/80 px-4 backdrop-blur-sm sm:px-6">
               <SidebarTrigger />
@@ -100,15 +100,10 @@ export default function MainLayout({
               </div>
           </header>
           <main className="flex-1 overflow-y-auto p-4 sm:p-6">
-              {React.Children.map(children, (child) => {
-                if (React.isValidElement(child)) {
-                  // @ts-ignore - cloning to pass the currentUser prop down
-                  return React.cloneElement(child, { currentUser });
-                }
-                return child;
-              })}
+              {children}
           </main>
         </SidebarInset>
       </SidebarProvider>
+    </UserContext.Provider>
   );
 }
