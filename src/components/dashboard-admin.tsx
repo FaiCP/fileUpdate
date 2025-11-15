@@ -1,162 +1,201 @@
 "use client";
 
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { FileText, MoreHorizontal, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { getUserById } from "@/lib/data";
-import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import type { Upload, UploadStatus, User } from "@/lib/types";
-import { FileCheck2, FileClock, FileX2, Hourglass, Users as UsersIcon } from "lucide-react";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, collectionGroup, query, limit, orderBy } from "firebase/firestore";
-import { useMemo } from "react";
+import { cn } from "@/lib/utils";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useState, useMemo } from "react";
+import { FileReviewDialog } from "@/components/file-review-dialog";
+import { useToast } from "@/hooks/use-toast";
+import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { doc, collection, collectionGroup, updateDoc } from "firebase/firestore";
+import { statusConfig } from "@/lib/status-config";
+import { PageHeader } from "./page-header";
 
-const statusConfig: Record<UploadStatus, { label: string; icon: React.ElementType; color: string }> = {
-  PENDIENTE: { label: "Pendiente", icon: Hourglass, color: "bg-yellow-500" },
-  'EN REVISION': { label: "En Revisión", icon: FileClock, color: "bg-blue-500" },
-  CORRECCIONES: { label: "Correcciones", icon: FileX2, color: "bg-orange-500" },
-  APROBADO: { label: "Aprobado", icon: FileCheck2, color: "bg-green-500" },
-  RECHAZADO: { label: "Rechazado", icon: FileX2, color: "bg-red-500" },
-};
+type FilterValue = 'all' | 'PENDIENTE' | 'APROBADO' | 'RECHAZADO' | 'EN REVISION' | 'CORRECCIONES';
 
 const StatusBadge = ({ status }: { status: UploadStatus }) => {
   const config = statusConfig[status];
-  if (!config) return <Badge>Desconocido</Badge>;
-  
-  const { label, icon: Icon, color } = config;
+  if (!config) return null;
+  const { label, icon: Icon, color, textColor } = config;
   return (
-    <Badge variant="outline" className="flex items-center gap-2 pl-2 text-sm whitespace-nowrap">
-      <span className={cn("h-2 w-2 rounded-full", color)}></span>
+    <Badge variant="outline" className={cn("gap-1.5 border-0 font-normal", color, textColor)}>
+      <Icon className="h-3.5 w-3.5" />
       {label}
     </Badge>
   );
 };
 
-
-// Chart data would ideally come from an aggregation, but we'll simulate it for now.
-const chartData = [
-  { date: 'Jun 1', uploads: 5 }, { date: 'Jun 2', uploads: 8 }, { date: 'Jun 3', uploads: 3 },
-  { date: 'Jun 4', uploads: 10 }, { date: 'Jun 5', uploads: 6 }, { date: 'Jun 6', uploads: 12 },
-  { date: 'Jun 7', uploads: 7 },
-];
+type UploadWithUser = Upload & { user?: User };
 
 export function DashboardAdmin() {
+    const { toast } = useToast();
     const firestore = useFirestore();
-    
-    const usersQuery = useMemoFirebase(() => firestore ? collection(firestore, 'users') : null, [firestore]);
+
+    const usersQuery = useMemoFirebase(() => firestore ? collection(firestore, "users") : null, [firestore]);
     const { data: users, isLoading: usersLoading } = useCollection<User>(usersQuery);
+
+    const uploadsQuery = useMemoFirebase(() => firestore ? collectionGroup(firestore, "uploads") : null, [firestore]);
+    const { data: uploads, isLoading: uploadsLoading } = useCollection<Upload>(uploadsQuery);
+
+    const [isReviewDialogOpen, setReviewDialogOpen] = useState(false);
+    const [selectedUpload, setSelectedUpload] = useState<UploadWithUser | undefined>(undefined);
+    const [activeFilter, setActiveFilter] = useState<FilterValue>('all');
     
-    const allUploadsQuery = useMemoFirebase(() => firestore ? collectionGroup(firestore, 'uploads') : null, [firestore]);
-    const { data: allUploads, isLoading: uploadsLoading } = useCollection<Upload>(allUploadsQuery);
-    
-    const recentUploadsQuery = useMemoFirebase(() => 
-        firestore ? query(collectionGroup(firestore, 'uploads'), orderBy('uploadDate', 'desc'), limit(5)) : null,
-        [firestore]
-    );
-    const { data: recentUploadsData, isLoading: recentUploadsLoading } = useCollection<Upload>(recentUploadsQuery);
+    const getUserById = (userId: string, userList: User[]): User | undefined => userList.find(u => u.id === userId);
 
-    const recentUploads = useMemo(() => {
-        if (!recentUploadsData || !users) return [];
-        return recentUploadsData.map(upload => ({ ...upload, user: getUserById(upload.userId, users) }));
-    }, [recentUploadsData, users]);
+    const uploadsWithUsers = useMemo(() => {
+        if (!uploads || !users) return [];
+        return uploads.map(upload => ({
+            ...upload,
+            user: getUserById(upload.userId, users)
+        })).sort((a, b) => new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime());
+    }, [uploads, users]);
 
+    const handleReviewClick = (upload: UploadWithUser) => {
+        setSelectedUpload(upload);
+        setReviewDialogOpen(true);
+    };
 
-    const pendingCount = allUploads?.filter(u => u.status === 'PENDIENTE').length ?? 0;
-    const approvedCount = allUploads?.filter(u => u.status === 'APROBADO').length ?? 0;
-    const activeUsersCount = users?.filter(u => u.isActive).length ?? 0;
+    const handleUpdateStatus = async (upload: UploadWithUser, status: UploadStatus, observations?: string) => {
+      if (!firestore) {
+        toast({ title: "Error", description: "Firestore not available.", variant: "destructive" });
+        return;
+      }
+      const uploadRef = doc(firestore, 'users', upload.userId, 'uploads', upload.id);
+      
+      const updateData: Partial<Upload> = { status };
+      if (observations) {
+        updateData.observations = observations;
+      }
+      if (status === 'APROBADO') {
+        updateData.acceptanceActPath = `/acts/${upload.id}.pdf`; // Dummy path
+      }
+
+      await updateDoc(uploadRef, updateData);
+      
+      toast({
+        title: `Archivo ${status.toLowerCase()}`,
+        description: `El archivo "${upload.originalName}" ha sido marcado como ${status.toLowerCase()}.`,
+      });
+    };
+
+    const filteredUploads = useMemo(() => {
+        if (activeFilter === 'all') return uploadsWithUsers;
+        return uploadsWithUsers.filter(upload => upload.status === activeFilter);
+    }, [uploadsWithUsers, activeFilter]);
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Archivos Pendientes</CardTitle>
-            <Hourglass className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{uploadsLoading ? '...' : pendingCount}</div>
-            <p className="text-xs text-muted-foreground">Esperando revisión</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Archivos Aprobados</CardTitle>
-            <FileCheck2 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{uploadsLoading ? '...' : approvedCount}</div>
-            <p className="text-xs text-muted-foreground">Actas generadas este mes</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Usuarios Activos</CardTitle>
-            <UsersIcon className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{usersLoading ? '...' : activeUsersCount}</div>
-            <p className="text-xs text-muted-foreground">Total de usuarios en el sistema</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-5">
-        <Card className="lg:col-span-3">
-          <CardHeader>
-            <CardTitle>Actividad de Carga</CardTitle>
-            <CardDescription>Archivos subidos en los últimos 7 días.</CardDescription>
-          </CardHeader>
-          <CardContent className="pl-2">
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="date" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--card))",
-                    borderColor: "hsl(var(--border))",
-                    borderRadius: "var(--radius)",
-                  }}
-                  cursor={{ fill: "hsl(var(--muted))" }}
+       <Tabs defaultValue="all" onValueChange={(value) => setActiveFilter(value as FilterValue)}>
+          <div className="flex items-center">
+            <TabsList>
+              <TabsTrigger value="all">Todos</TabsTrigger>
+              <TabsTrigger value="PENDIENTE">Pendientes</TabsTrigger>
+              <TabsTrigger value="APROBADO">Aprobados</TabsTrigger>
+              <TabsTrigger value="RECHAZADO">Rechazados</TabsTrigger>
+              <TabsTrigger value="CORRECCIONES">Correcciones</TabsTrigger>
+            </TabsList>
+            <div className="ml-auto flex items-center gap-2">
+              <div className="relative ml-auto flex-1 md:grow-0">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Buscar por nombre o usuario..."
+                  className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[320px]"
                 />
-                <Bar dataKey="uploads" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-        <Card className="lg:col-span-2">
-            <CardHeader>
-                <CardTitle>Actividad Reciente</CardTitle>
-                <CardDescription>Últimos 5 movimientos en la plataforma.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                 <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Archivo</TableHead>
-                            <TableHead>Usuario</TableHead>
-                            <TableHead className="text-right">Estado</TableHead>
+              </div>
+            </div>
+          </div>
+          <TabsContent value={activeFilter}>
+            <Card className="mt-4">
+              <CardContent className="pt-6">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Archivo</TableHead>
+                      <TableHead className="hidden sm:table-cell">Usuario</TableHead>
+                      <TableHead className="hidden sm:table-cell">Estado</TableHead>
+                      <TableHead className="hidden md:table-cell">Fecha</TableHead>
+                      <TableHead>
+                        <span className="sr-only">Acciones</span>
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(uploadsLoading || usersLoading) && <TableRow><TableCell colSpan={5} className="text-center py-10">Cargando datos...</TableCell></TableRow>}
+                    {!uploadsLoading && !usersLoading && filteredUploads.length === 0 && <TableRow><TableCell colSpan={5} className="text-center py-10 text-muted-foreground">No hay archivos en esta categoría.</TableCell></TableRow>}
+                    {!uploadsLoading && !usersLoading && filteredUploads.map((upload) => {
+                      return (
+                        <TableRow key={upload.id}>
+                          <TableCell className="font-medium">
+                            <div className="flex items-center gap-3">
+                                <FileText className="h-6 w-6 text-muted-foreground flex-shrink-0" />
+                                <div>
+                                    <div className="font-semibold">{upload.originalName}</div>
+                                    <div className="text-sm text-muted-foreground sm:hidden">
+                                      {upload.user?.firstName} {upload.user?.lastName}
+                                    </div>
+                                </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="hidden sm:table-cell">{upload.user?.firstName} {upload.user?.lastName}</TableCell>
+                          <TableCell className="hidden sm:table-cell">
+                            <StatusBadge status={upload.status} />
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">{upload.uploadDate}</TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button aria-haspopup="true" size="icon" variant="ghost">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                  <span className="sr-only">Toggle menu</span>
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                                <DropdownMenuItem onClick={() => handleReviewClick(upload)}>Revisar Archivo</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleUpdateStatus(upload, 'APROBADO')}>Aprobar Directamente</DropdownMenuItem>
+                                <DropdownMenuItem className="text-destructive" onClick={() => handleUpdateStatus(upload, 'RECHAZADO')}>Rechazar</DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
                         </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {(recentUploadsLoading || usersLoading) && <TableRow><TableCell colSpan={3} className="text-center">Cargando...</TableCell></TableRow>}
-                      {!recentUploadsLoading && !usersLoading && recentUploads.length === 0 && <TableRow><TableCell colSpan={3} className="text-center py-10">No hay actividad reciente.</TableCell></TableRow>}
-                      {recentUploads.map(upload => (
-                            <TableRow key={upload.id}>
-                                <TableCell className="font-medium truncate max-w-[120px]">{upload.originalName}</TableCell>
-                                <TableCell>{upload.user ? `${upload.user.firstName} ${upload.user.lastName}` : 'Desconocido'}</TableCell>
-                                <TableCell className="text-right">
-                                    <StatusBadge status={upload.status} />
-                                </TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
+                      );
+                    })}
+                  </TableBody>
                 </Table>
-            </CardContent>
-        </Card>
-      </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+      </Tabs>
+      {selectedUpload && (
+        <FileReviewDialog
+          isOpen={isReviewDialogOpen}
+          setIsOpen={setReviewDialogOpen}
+          upload={selectedUpload}
+          onUpdateStatus={handleUpdateStatus}
+        />
+      )}
     </div>
   );
 }
