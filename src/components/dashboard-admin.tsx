@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import type { Upload, UploadStatus, User } from "@/lib/types";
 import { FileCheck2, FileClock, FileX2, Hourglass, Users as UsersIcon } from "lucide-react";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, collectionGroup, query, limit } from "firebase/firestore";
+import { collection, collectionGroup, query, limit, orderBy } from "firebase/firestore";
 import { useMemo } from "react";
 
 const statusConfig: Record<UploadStatus, { label: string; icon: React.ElementType; color: string }> = {
@@ -21,7 +21,10 @@ const statusConfig: Record<UploadStatus, { label: string; icon: React.ElementTyp
 };
 
 const StatusBadge = ({ status }: { status: UploadStatus }) => {
-  const { label, icon: Icon, color } = statusConfig[status];
+  const config = statusConfig[status];
+  if (!config) return <Badge>Desconocido</Badge>;
+  
+  const { label, icon: Icon, color } = config;
   return (
     <Badge variant="outline" className="flex items-center gap-2 pl-2 text-sm whitespace-nowrap">
       <span className={cn("h-2 w-2 rounded-full", color)}></span>
@@ -29,6 +32,7 @@ const StatusBadge = ({ status }: { status: UploadStatus }) => {
     </Badge>
   );
 };
+
 
 // Chart data would ideally come from an aggregation, but we'll simulate it for now.
 const chartData = [
@@ -47,14 +51,14 @@ export function DashboardAdmin() {
     const { data: allUploads, isLoading: uploadsLoading } = useCollection<Upload>(allUploadsQuery);
     
     const recentUploadsQuery = useMemoFirebase(() => 
-        firestore ? query(collectionGroup(firestore, 'uploads'), limit(5)) : null,
+        firestore ? query(collectionGroup(firestore, 'uploads'), orderBy('uploadDate', 'desc'), limit(5)) : null,
         [firestore]
     );
     const { data: recentUploadsData, isLoading: recentUploadsLoading } = useCollection<Upload>(recentUploadsQuery);
 
     const recentUploads = useMemo(() => {
         if (!recentUploadsData || !users) return [];
-        return recentUploadsData.map(u => ({ ...u, user: getUserById(u.userId, users) }));
+        return recentUploadsData.map(upload => ({ ...upload, user: getUserById(upload.userId, users) }));
     }, [recentUploadsData, users]);
 
 
@@ -137,11 +141,12 @@ export function DashboardAdmin() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {recentUploadsLoading && <TableRow><TableCell colSpan={3}>Cargando...</TableCell></TableRow>}
-                        {recentUploads.map(upload => (
+                      {(recentUploadsLoading || usersLoading) && <TableRow><TableCell colSpan={3} className="text-center">Cargando...</TableCell></TableRow>}
+                      {!recentUploadsLoading && !usersLoading && recentUploads.length === 0 && <TableRow><TableCell colSpan={3} className="text-center py-10">No hay actividad reciente.</TableCell></TableRow>}
+                      {recentUploads.map(upload => (
                             <TableRow key={upload.id}>
                                 <TableCell className="font-medium truncate max-w-[120px]">{upload.originalName}</TableCell>
-                                <TableCell>{upload.user?.firstName} {upload.user?.lastName}</TableCell>
+                                <TableCell>{upload.user ? `${upload.user.firstName} ${upload.user.lastName}` : 'Desconocido'}</TableCell>
                                 <TableCell className="text-right">
                                     <StatusBadge status={upload.status} />
                                 </TableCell>

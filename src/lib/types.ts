@@ -7,7 +7,7 @@ export type User = {
   identification: string;
   department: string;
   email: string;
-  role: 'user' | 'admin';
+  rol: 'user' | 'admin';
   isActive: boolean;
   avatarUrl?: string;
   dateJoined?: Timestamp;

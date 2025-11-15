@@ -23,9 +23,9 @@ export default function DashboardPage() {
   }
 
   // Log para verificar el rol del usuario
-  console.log("ROL PARA VALIDACIÓN:", currentUser?.role);
+  console.log("ROL PARA VALIDACIÓN:", currentUser?.rol);
   
-  const isAdmin = currentUser.role === 'admin';
+  const isAdmin = currentUser.rol === 'admin';
 
   return (
     <div className="container mx-auto px-0">

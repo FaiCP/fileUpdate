@@ -31,6 +31,8 @@ const adminNavItems = [
 export function SidebarNav() {
   const pathname = usePathname();
   const currentUser = useCurrentUser();
+  console.log(">>> currentUser recibido en SidebarNav:", currentUser);
+
   
   if (!currentUser) {
     return (
@@ -50,8 +52,9 @@ export function SidebarNav() {
     )
   }
 
-  const isAdmin = currentUser?.role === 'admin';
+  const isAdmin = currentUser?.rol === 'admin';
   const navItems = isAdmin ? adminNavItems : userNavItems;
+  console.log("valr",isAdmin);
 
   return (
     <Sidebar>
