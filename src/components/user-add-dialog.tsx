@@ -39,20 +39,20 @@ export function UserAddDialog({ isOpen, setIsOpen, onSave, user }: UserAddDialog
         if (isOpen) {
             if (user) {
                 setFormData({
-                    firstName: user.firstName,
-                    lastName: user.lastName,
+                    nombres: user.nombres,
+                    apellidos: user.apellidos,
                     email: user.email,
                     identification: user.identification,
                     department: user.department,
-                    role: user.role,
+                    rol: user.rol,
                 });
                 setPassword(''); // Clear password for existing user edit
             } else {
                 setFormData({
-                    role: 'user',
+                    rol: 'user',
                     department: 'Recursos Humanos',
-                    firstName: '',
-                    lastName: '',
+                    nombres: '',
+                    apellidos: '',
                     email: '',
                     identification: '',
                 });
@@ -109,7 +109,7 @@ export function UserAddDialog({ isOpen, setIsOpen, onSave, user }: UserAddDialog
             
             toast({
                 title: user ? "Usuario Actualizado" : "Usuario Creado",
-                description: `El usuario ${formData.firstName} ha sido ${user ? 'actualizado' : 'creado'} correctamente.`,
+                description: `El usuario ${formData.nombres} ha sido ${user ? 'actualizado' : 'creado'} correctamente.`,
             });
             setIsOpen(false);
         } catch(error: any) {
@@ -138,11 +138,11 @@ export function UserAddDialog({ isOpen, setIsOpen, onSave, user }: UserAddDialog
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div className="space-y-2">
                         <Label htmlFor="firstName">Nombres</Label>
-                        <Input id="firstName" placeholder="Ej: Ana" required value={formData.firstName || ''} onChange={handleChange} />
+                        <Input id="firstName" placeholder="Ej: Ana" required value={formData.nombres || ''} onChange={handleChange} />
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="lastName">Apellidos</Label>
-                        <Input id="lastName" placeholder="Ej: García" required value={formData.lastName || ''} onChange={handleChange} />
+                        <Input id="lastName" placeholder="Ej: García" required value={formData.apellidos || ''} onChange={handleChange} />
                     </div>
                 </div>
                  <div className="space-y-2">
@@ -171,7 +171,7 @@ export function UserAddDialog({ isOpen, setIsOpen, onSave, user }: UserAddDialog
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="role">Rol</Label>
-                        <Select name="role" required value={formData.role || ''} onValueChange={(value) => handleSelectChange('role', value)}>
+                        <Select name="role" required value={formData.rol || ''} onValueChange={(value) => handleSelectChange('role', value)}>
                             <SelectTrigger id="role">
                             <SelectValue placeholder="Selecciona un rol" />
                             </SelectTrigger>

@@ -38,6 +38,7 @@ const StatusBadge = ({ status }: { status: UploadStatus }) => {
 export default function UserFilesPage() {
   const { user: currentUser } = useUser();
   const firestore = useFirestore();
+  
 
   const userUploadsQuery = useMemoFirebase(() => {
     if (!firestore || !currentUser?.uid) return null;

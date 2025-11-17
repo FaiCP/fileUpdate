@@ -70,15 +70,26 @@ export function AdminFilesClientPage({ initialUploads, initialUsers }: AdminFile
     const currentUploads = rtUploads || initialUploads;
 
     // Helper to find a user by ID
-    const getUserById = (userId: string, users: User[]): User | undefined => users.find(u => u.id === userId);
-
+   
+    const getUserById = (userId: string, users: User[]) => {
+      return users.find(u => u.id === userId);
+    };
+        
     // Enrich uploads with user data
-    const uploadsWithUsers = useMemo(() => {
-        return currentUploads.map(upload => ({
-            ...upload,
-            user: getUserById(upload.userId, initialUsers) // Assuming users list doesn't change in real-time
-        })).sort((a, b) => new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime());
-    }, [currentUploads, initialUsers]);
+    const uploadsWithUsers = currentUploads.map(upload => ({
+      ...upload,
+      user: getUserById(upload.userId, initialUsers)
+    }));    
+    
+    console.log("initialUsers:", initialUsers);
+console.log("currentUploads:", currentUploads);
+console.log("match check:", currentUploads.map(u => ({
+  uploadId: u.id,
+  userId: u.userId,
+  foundUser: initialUsers.find(x => x.id === u.userId)
+})));
+
+
 
     const handleReviewClick = (upload: UploadWithUser) => {
         setSelectedUpload(upload);
@@ -165,12 +176,12 @@ export function AdminFilesClientPage({ initialUploads, initialUsers }: AdminFile
                                 <div>
                                     <div className="font-semibold">{upload.originalName}</div>
                                     <div className="text-sm text-muted-foreground sm:hidden">
-                                      {upload.user?.firstName} {upload.user?.lastName}
+                                      {upload.user?.nombres} {upload.user?.apellidos}
                                     </div>
                                 </div>
                             </div>
                           </TableCell>
-                          <TableCell className="hidden sm:table-cell">{upload.user?.firstName} {upload.user?.lastName}</TableCell>
+                          <TableCell className="hidden sm:table-cell">{upload.user?.nombres} {upload.user?.apellidos}</TableCell>
                           <TableCell className="hidden sm:table-cell">
                             <StatusBadge status={upload.status} />
                           </TableCell>

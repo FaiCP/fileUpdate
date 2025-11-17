@@ -1,19 +1,17 @@
-"use client";
-
-import * as React from "react";
 import { DashboardAdmin } from "@/components/dashboard-admin";
 import { DashboardUser } from "@/components/dashboard-user";
 import { PageHeader } from "@/components/page-header";
-import { useCurrentUser } from "@/context/UserContext";
+import { getCurrentUser, getUsers, getUploads } from "@/firebase/firestore/server-actions";
 
-// This component now receives currentUser as a prop from the layout
-export default function DashboardPage() {
-  const currentUser = useCurrentUser();
+export default async function DashboardPage() {
+  const currentUser = await getCurrentUser();
+  const users = await getUsers();
+  const uploads = await getUploads();
 
   if (!currentUser) {
     return (
       <div className="container mx-auto px-0">
-         <PageHeader
+        <PageHeader
           title="Dashboard"
           description="Cargando información del usuario..."
         />
@@ -22,10 +20,7 @@ export default function DashboardPage() {
     );
   }
 
-  // Log para verificar el rol del usuario
-  console.log("ROL PARA VALIDACIÓN:", currentUser?.rol);
-  
-  const isAdmin = currentUser.rol === 'admin';
+  const isAdmin = currentUser.rol === "admin";
 
   return (
     <div className="container mx-auto px-0">
@@ -34,7 +29,19 @@ export default function DashboardPage() {
         description={isAdmin ? "Vista general para administradores." : "Resumen de tu actividad."}
       />
 
-      {isAdmin ? <DashboardAdmin /> : <DashboardUser currentUser={currentUser} />}
+      {isAdmin 
+        ? (
+            <DashboardAdmin 
+              initialUsers={users}
+              initialUploads={uploads}
+            />
+          ) 
+        : (
+            <DashboardUser 
+              currentUser={currentUser} 
+            />
+          )
+      }
     </div>
   );
 }

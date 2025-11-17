@@ -2,8 +2,8 @@ import { Timestamp } from "firebase/firestore";
 
 export type User = {
   id: string; // Changed to string to match Firebase Auth UID
-  firstName: string;
-  lastName: string;
+  nombres: string;
+  apellidos: string;
   identification: string;
   department: string;
   email: string;

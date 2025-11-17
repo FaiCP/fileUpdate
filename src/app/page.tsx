@@ -98,12 +98,12 @@ export default function LoginPage() {
         // 3. Create Firestore user document
         const newUser: User = {
             id: userId,
-            firstName: 'Ana',
-            lastName: 'García (Admin)',
+            nombres: 'Ana',
+            apellidos: 'García (Admin)',
             email: adminEmail,
             identification: '00000000-0',
             department: 'Administración',
-            role: 'admin',
+            rol: 'admin',
             isActive: true,
             avatarUrl: `https://picsum.photos/seed/${userId}/100/100`,
         };
@@ -136,45 +136,44 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!auth) {
-        toast({
-            variant: "destructive",
-            title: "Error",
-            description: "El servicio de autenticación no está disponible.",
-        });
-        return;
-    }
+    if (!auth) return;
+    console.log("🔐 UID logueado:", auth.currentUser?.uid);
 
     setIsSubmitting(true);
-
+  
     try {
+      // 1. Login de Firebase
       await signInWithEmailAndPassword(auth, email, password);
-      // The redirect is now handled by the layout after successful login and user data fetching.
-      router.push('/dashboard');
+  
+      const user = auth.currentUser;
+      if (!user) throw new Error("No se pudo obtener el usuario autenticado.");
+  
+      // 2. Guardar cookie en el servidor
+      await fetch("/api/session", {
+        method: "POST",
+        credentials: "include",               // 🔥 Obligatorio
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ userId: user.uid }),
+      });      
+  
+      // 3. Redirigir a Dashboard
+      router.push("/dashboard");
+  
     } catch (error: any) {
-      let errorMessage = "Ocurrió un error al iniciar sesión.";
-      switch (error.code) {
-        case 'auth/user-not-found':
-        case 'auth/wrong-password':
-        case 'auth/invalid-credential':
-          errorMessage = 'Correo electrónico o contraseña incorrectos.';
-          break;
-        case 'auth/invalid-email':
-          errorMessage = 'El formato del correo electrónico no es válido.';
-          break;
-        default:
-          errorMessage = 'No se pudo iniciar sesión. Por favor, inténtalo de nuevo.';
-          break;
-      }
+      console.error(error);
+  
       toast({
         variant: "destructive",
-        title: "Error de autenticación",
-        description: errorMessage,
+        title: "Error",
+        description: "No se pudo iniciar sesión.",
       });
     } finally {
-        setIsSubmitting(false);
+      setIsSubmitting(false);
     }
   };
+  
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
