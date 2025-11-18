@@ -1,5 +1,10 @@
 import { Timestamp } from "firebase/firestore";
 
+export type AssignedLocation = {
+  shelf: string;
+  box: string;
+};
+
 export type User = {
   id: string; // Changed to string to match Firebase Auth UID
   nombres: string;
@@ -11,6 +16,7 @@ export type User = {
   isActive: boolean;
   avatarUrl?: string;
   dateJoined?: Timestamp;
+  assignedLocations?: AssignedLocation[];
 };
 
 export type UploadStatus = 'PENDIENTE' | 'EN REVISION' | 'CORRECCIONES' | 'APROBADO' | 'RECHAZADO';
@@ -26,4 +32,6 @@ export type Upload = {
   status: UploadStatus; // Renamed from estado
   observations?: string; // Renamed from observaciones
   acceptanceActPath?: string; // Renamed from acta_pdf_path
+  shelf: string;
+  box: string;
 };

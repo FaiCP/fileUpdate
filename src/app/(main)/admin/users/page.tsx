@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { MoreHorizontal, PlusCircle, Search, UserCog } from "lucide-react";
+import { MoreHorizontal, PlusCircle, Search, UserCog, Package } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -29,6 +29,7 @@ import type { User } from "@/lib/types";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, doc, setDoc, updateDoc, deleteDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
+import { AssignLocationDialog } from "@/components/assign-location-dialog";
 
 export default function AdminUsersPage() {
   const firestore = useFirestore();
@@ -36,18 +37,25 @@ export default function AdminUsersPage() {
   const { data: users, isLoading } = useCollection<User>(usersCollectionRef);
   
   const [isUserDialogOpen, setUserDialogOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<User | undefined>(undefined);
+  const [isLocationDialogOpen, setLocationDialogOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | undefined>(undefined);
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
 
-  const handleOpenDialog = (user?: User) => {
-    setEditingUser(user);
+  const handleOpenUserDialog = (user?: User) => {
+    setSelectedUser(user);
     setUserDialogOpen(true);
   };
+  
+  const handleOpenLocationDialog = (user: User) => {
+    setSelectedUser(user);
+    setLocationDialogOpen(true);
+  };
 
-  const handleCloseDialog = () => {
-    setEditingUser(undefined);
+  const handleCloseDialogs = () => {
+    setSelectedUser(undefined);
     setUserDialogOpen(false);
+    setLocationDialogOpen(false);
   };
 
   const handleSaveUser = async (userData: Omit<User, 'id' | 'avatarUrl' | 'isActive'>, newUserId?: string) => {
@@ -57,11 +65,11 @@ export default function AdminUsersPage() {
     }
     
     try {
-        if (editingUser) {
+        if (selectedUser) {
             // Edit existing user
-            const userRef = doc(firestore, "users", editingUser.id);
+            const userRef = doc(firestore, "users", selectedUser.id);
             await updateDoc(userRef, userData);
-            toast({ title: "Usuario actualizado", description: `Los datos de ${userData.firstName} se han guardado.` });
+            toast({ title: "Usuario actualizado", description: `Los datos de ${userData.nombres} se han guardado.` });
 
         } else if (newUserId) {
             // Add new user (the auth part is handled in the dialog)
@@ -71,15 +79,16 @@ export default function AdminUsersPage() {
                 id: newUserId,
                 isActive: true,
                 avatarUrl: `https://picsum.photos/seed/${newUserId}/100/100`,
+                assignedLocations: [] // Initialize with empty locations
             };
             await setDoc(newUserRef, newUser, { merge: false });
 
             // If it's an admin, add to the roles collection
-            if (newUser.role === 'admin') {
+            if (newUser.rol === 'admin') {
                 const adminRoleRef = doc(firestore, "roles_admin", newUserId);
                 await setDoc(adminRoleRef, { grantedAt: new Date() }, { merge: true });
             }
-            toast({ title: "Usuario creado", description: `El usuario ${userData.firstName} ha sido añadido.` });
+            toast({ title: "Usuario creado", description: `El usuario ${userData.nombres} ha sido añadido.` });
         }
     } catch (error) {
         toast({ title: "Error", description: "No se pudo guardar el usuario en la base de datos.", variant: "destructive" });
@@ -101,7 +110,7 @@ export default function AdminUsersPage() {
     // Also add to roles_admin collection for security rule check
     const adminRoleRef = doc(firestore, "roles_admin", user.id);
     await setDoc(adminRoleRef, { grantedAt: new Date() }, { merge: true });
-    toast({ title: "Usuario promovido", description: `${user.firstName} ahora es administrador.` });
+    toast({ title: "Usuario promovido", description: `${user.nombres} ahora es administrador.` });
   };
   
   const demoteToUser = async (user: User) => {
@@ -110,14 +119,14 @@ export default function AdminUsersPage() {
     await updateDoc(userRef, { role: 'user' });
     const adminRoleRef = doc(firestore, "roles_admin", user.id);
     await deleteDoc(adminRoleRef);
-    toast({ title: "Usuario degradado", description: `${user.firstName} ahora es un usuario estándar.` });
+    toast({ title: "Usuario degradado", description: `${user.nombres} ahora es un usuario estándar.` });
   };
 
 
   const filteredUsers = useMemo(() => {
     if (!users) return [];
     return users.filter(user =>
-      `${user.firstName} ${user.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      `${user.nombres} ${user.apellidos}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [users, searchTerm]);
@@ -140,7 +149,7 @@ export default function AdminUsersPage() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Button size="sm" className="h-9 gap-1" onClick={() => handleOpenDialog()}>
+          <Button size="sm" className="h-9 gap-1" onClick={() => handleOpenUserDialog()}>
             <PlusCircle className="h-4 w-4" />
             <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
               Añadir Usuario
@@ -149,12 +158,22 @@ export default function AdminUsersPage() {
         </div>
       </PageHeader>
       
-      <UserAddDialog 
-        isOpen={isUserDialogOpen} 
-        setIsOpen={handleCloseDialog}
-        onSave={handleSaveUser}
-        user={editingUser}
-      />
+      {isUserDialogOpen && (
+          <UserAddDialog 
+            isOpen={isUserDialogOpen} 
+            setIsOpen={handleCloseDialogs}
+            onSave={handleSaveUser}
+            user={selectedUser}
+          />
+      )}
+
+      {selectedUser && isLocationDialogOpen && (
+          <AssignLocationDialog
+            isOpen={isLocationDialogOpen}
+            setIsOpen={handleCloseDialogs}
+            user={selectedUser}
+          />
+      )}
 
       <Card>
         <CardContent className="pt-6">
@@ -185,16 +204,16 @@ export default function AdminUsersPage() {
                     <div className="flex items-center gap-3">
                       <Avatar className="hidden h-9 w-9 sm:flex">
                         <AvatarImage src={user.avatarUrl} alt="Avatar" data-ai-hint="person portrait" />
-                        <AvatarFallback>{user.firstName?.charAt(0)}{user.lastName?.charAt(0)}</AvatarFallback>
+                        <AvatarFallback>{user.nombres?.charAt(0)}{user.apellidos?.charAt(0)}</AvatarFallback>
                       </Avatar>
                       <div className="grid gap-0.5">
-                        <span className="font-semibold">{user.firstName} {user.lastName}</span>
+                        <span className="font-semibold">{user.nombres} {user.apellidos}</span>
                         <span className="text-sm text-muted-foreground">{user.email}</span>
                       </div>
                     </div>
                   </TableCell>
                   <TableCell className="hidden md:table-cell">{user.department}</TableCell>
-                  <TableCell className="hidden sm:table-cell capitalize">{user.role}</TableCell>
+                  <TableCell className="hidden sm:table-cell capitalize">{user.rol}</TableCell>
                   <TableCell className="hidden sm:table-cell">
                     <Badge variant={user.isActive ? "default" : "destructive"} className={user.isActive ? "bg-green-600" : ""}>
                       {user.isActive ? "Activo" : "Inactivo"}
@@ -210,12 +229,16 @@ export default function AdminUsersPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => handleOpenDialog(user)}>Editar</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleOpenUserDialog(user)}>Editar Usuario</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleOpenLocationDialog(user)}>
+                            <Package className="mr-2 h-4 w-4" />
+                            Asignar Ubicaciones
+                        </DropdownMenuItem>
                         <DropdownMenuItem className={user.isActive ? "text-destructive" : ""} onClick={() => toggleUserStatus(user)}>
                           {user.isActive ? "Desactivar" : "Activar"}
                         </DropdownMenuItem>
                          <DropdownMenuSeparator />
-                        {user.role === 'admin' ? (
+                        {user.rol === 'admin' ? (
                           <DropdownMenuItem onClick={() => demoteToUser(user)}>
                             <UserCog className="mr-2 h-4 w-4" />
                             Hacer Usuario

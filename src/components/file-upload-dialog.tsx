@@ -20,7 +20,6 @@ import { useToast } from "@/hooks/use-toast";
 import type { Upload, User } from "@/lib/types";
 import { useFirestore } from "@/firebase";
 import { collection, addDoc } from "firebase/firestore";
-import { format } from "date-fns";
 
 type FileUploadDialogProps = {
     currentUser: User;
@@ -61,16 +60,20 @@ export function FileUploadDialog({ currentUser }: FileUploadDialogProps) {
         const formData = new FormData(e.currentTarget);
         
         if (!files || files.length === 0) {
-            toast({
-                variant: "destructive",
-                title: "Error",
-                description: "Por favor, selecciona al menos un archivo para subir.",
-            });
+            toast({ variant: "destructive", title: "Error", description: "Por favor, selecciona al menos un archivo para subir." });
             return;
         }
         
         const usage = formData.get('usage') as Upload['usage'];
         const description = formData.get('description') as string | undefined;
+        const location = formData.get('location') as string;
+
+        if (!location) {
+            toast({ variant: "destructive", title: "Error", description: "Debes seleccionar una estantería y caja." });
+            return;
+        }
+
+        const [shelf, box] = location.split('/');
 
         try {
             for (let i = 0; i < files.length; i++) {
@@ -83,7 +86,9 @@ export function FileUploadDialog({ currentUser }: FileUploadDialogProps) {
                     usage: usage,
                     description: description,
                     uploadDate: new Date().toISOString(),
-                    status: 'PENDIENTE'
+                    status: 'PENDIENTE',
+                    shelf: shelf.trim(),
+                    box: box.trim(),
                 };
 
                 // In a real app, you would also upload the file to Firebase Storage
@@ -110,6 +115,8 @@ export function FileUploadDialog({ currentUser }: FileUploadDialogProps) {
         }
     };
 
+    const hasAssignedLocations = currentUser.assignedLocations && currentUser.assignedLocations.length > 0;
+
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
@@ -127,42 +134,62 @@ export function FileUploadDialog({ currentUser }: FileUploadDialogProps) {
                 </DialogHeader>
                 <form onSubmit={handleSubmit}>
                     <div className="grid gap-6 py-4">
-                    <div className="grid grid-cols-1 items-center gap-4">
-                        <Label htmlFor="file-upload" className="font-medium">
-                        Archivos
-                        </Label>
-                        <Input 
-                            id="file-upload" 
-                            type="file" 
-                            required 
-                            multiple
-                            className="text-foreground" 
-                            onChange={(e) => setFiles(e.target.files)}
-                        />
-                        {files && <div className="text-sm text-muted-foreground">{files.length} archivo(s) seleccionado(s)</div>}
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="usage">Uso del Archivo</Label>
-                        <Select name="usage" required>
-                            <SelectTrigger id="usage">
-                            <SelectValue placeholder="Selecciona un uso" />
-                            </SelectTrigger>
-                            <SelectContent>
-                            <SelectItem value="acta">Acta</SelectItem>
-                            <SelectItem value="contrato">Contrato</SelectItem>
-                            <SelectItem value="memorando">Memorando</SelectItem>
-                            <SelectItem value="otro">Otro</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="description">Descripción (Opcional)</Label>
-                        <Textarea name="description" id="description" placeholder="Añade una breve descripción del contenido de los archivos." />
-                    </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="location">Ubicación (Estantería / Caja)</Label>
+                            <Select name="location" required disabled={!hasAssignedLocations}>
+                                <SelectTrigger id="location">
+                                    <SelectValue placeholder={hasAssignedLocations ? "Selecciona una ubicación" : "No tienes ubicaciones asignadas"} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {currentUser.assignedLocations?.map((loc, index) => (
+                                        <SelectItem key={index} value={`${loc.shelf} / ${loc.box}`}>
+                                            Estantería: {loc.shelf} / Caja: {loc.box}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            {!hasAssignedLocations && (
+                                <p className="text-xs text-destructive">Contacta a un administrador para que te asigne una ubicación.</p>
+                            )}
+                        </div>
+
+                        <div className="grid grid-cols-1 items-center gap-4">
+                            <Label htmlFor="file-upload" className="font-medium">
+                            Archivos
+                            </Label>
+                            <Input 
+                                id="file-upload" 
+                                type="file" 
+                                required 
+                                multiple
+                                className="text-foreground" 
+                                onChange={(e) => setFiles(e.target.files)}
+                            />
+                            {files && <div className="text-sm text-muted-foreground">{files.length} archivo(s) seleccionado(s)</div>}
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="usage">Uso del Archivo</Label>
+                            <Select name="usage" required>
+                                <SelectTrigger id="usage">
+                                <SelectValue placeholder="Selecciona un uso" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                <SelectItem value="acta">Acta</SelectItem>
+                                <SelectItem value="contrato">Contrato</SelectItem>
+                                <SelectItem value="memorando">Memorando</SelectItem>
+                                <SelectItem value="otro">Otro</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="description">Descripción (Opcional)</Label>
+                            <Textarea name="description" id="description" placeholder="Añade una breve descripción del contenido de los archivos." />
+                        </div>
                     </div>
                     <DialogFooter>
                         <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancelar</Button>
-                        <Button type="submit">Subir y Enviar a Revisión</Button>
+                        <Button type="submit" disabled={!hasAssignedLocations}>Subir y Enviar a Revisión</Button>
                     </DialogFooter>
                 </form>
             </DialogContent>

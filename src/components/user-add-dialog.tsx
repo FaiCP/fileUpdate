@@ -20,7 +20,7 @@ import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
 import { firebaseConfig } from "@/firebase/config";
 
 
-type UserData = Omit<User, 'id' | 'avatarUrl' | 'isActive'>;
+type UserData = Omit<User, 'id' | 'avatarUrl' | 'isActive' | 'assignedLocations'>;
 
 type UserAddDialogProps = {
   isOpen: boolean;
@@ -137,12 +137,12 @@ export function UserAddDialog({ isOpen, setIsOpen, onSave, user }: UserAddDialog
             <div className="grid gap-6 py-4">
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div className="space-y-2">
-                        <Label htmlFor="firstName">Nombres</Label>
-                        <Input id="firstName" placeholder="Ej: Ana" required value={formData.nombres || ''} onChange={handleChange} />
+                        <Label htmlFor="nombres">Nombres</Label>
+                        <Input id="nombres" placeholder="Ej: Ana" required value={formData.nombres || ''} onChange={handleChange} />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="lastName">Apellidos</Label>
-                        <Input id="lastName" placeholder="Ej: García" required value={formData.apellidos || ''} onChange={handleChange} />
+                        <Label htmlFor="apellidos">Apellidos</Label>
+                        <Input id="apellidos" placeholder="Ej: García" required value={formData.apellidos || ''} onChange={handleChange} />
                     </div>
                 </div>
                  <div className="space-y-2">
@@ -170,9 +170,9 @@ export function UserAddDialog({ isOpen, setIsOpen, onSave, user }: UserAddDialog
                         </Select>
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="role">Rol</Label>
-                        <Select name="role" required value={formData.rol || ''} onValueChange={(value) => handleSelectChange('role', value)}>
-                            <SelectTrigger id="role">
+                        <Label htmlFor="rol">Rol</Label>
+                        <Select name="rol" required value={formData.rol || ''} onValueChange={(value) => handleSelectChange('rol', value)}>
+                            <SelectTrigger id="rol">
                             <SelectValue placeholder="Selecciona un rol" />
                             </SelectTrigger>
                             <SelectContent>
