@@ -82,7 +82,7 @@ export function FileUploadDialog({ currentUser }: FileUploadDialogProps) {
                     fileType: fileType,
                     usage: usage,
                     description: description,
-                    uploadDate: format(new Date(), 'yyyy-MM-dd HH:mm'),
+                    uploadDate: new Date().toISOString(),
                     status: 'PENDIENTE'
                 };
 

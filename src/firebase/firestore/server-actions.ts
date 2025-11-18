@@ -1,6 +1,17 @@
 import { firestore } from "../server";
 import type { User, Upload } from "@/lib/types";
 import { cookies } from "next/headers";
+import fs from "fs/promises";
+import path from "path";
+
+const NAS_BASE = "\\\\10.0.16.103\\tics\\Pruebas";
+
+async function moveFileOnNAS(fileName: string) {
+  const from = path.join(NAS_BASE, "pendientes", fileName);
+  const to   = path.join(NAS_BASE, "validados", fileName);
+
+  await fs.rename(from, to);
+}
 
 // ✔ Obtener todos los usuarios
 export async function getUsers(): Promise<User[]> {

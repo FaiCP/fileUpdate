@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -13,10 +14,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import type { Upload, UploadStatus, User } from "@/lib/types";
-import { Check, Send, X, Printer } from "lucide-react";
+import { Check, Send, X, Printer, ExternalLink } from "lucide-react";
 import { useState, useRef } from "react";
 import { useReactToPrint } from "react-to-print";
 import { ActaPreview } from "./acta-preview";
+import { updateUploadStatus } from "@/app/actions/update-upload-status";
+import { toast } from "@/hooks/use-toast";
+import Link from "next/link";
 
 type UploadWithUser = Upload & { user?: User };
 
@@ -27,21 +31,41 @@ type FileReviewDialogProps = {
   onUpdateStatus: (upload: UploadWithUser, status: UploadStatus, observations?: string) => Promise<void>;
 };
 
+// Asumimos que los archivos pendientes están en esta ruta
+const NAS_PENDIENTES_PATH_FOR_LINK = "file:////10.0.16.103/tics/Pruebas/pendientes/";
+
 export function FileReviewDialog({ isOpen, setIsOpen, upload, onUpdateStatus }: FileReviewDialogProps) {
   const [observations, setObservations] = useState(upload.observations || "");
   const actaRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = useReactToPrint({
     content: () => actaRef.current,
-    documentTitle: `acta-${upload.id}-${upload.user?.firstName}`,
+    documentTitle: `acta-${upload.id}-${upload.user?.nombres}`,
     onAfterPrint: () => console.log("printed"),
   });
 
-
   const handleAction = async (status: UploadStatus) => {
-    await onUpdateStatus(upload, status, observations);
-    setIsOpen(false);
+    // Usamos la Server Action directamente desde aquí para pasarle el originalName
+    const result = await updateUploadStatus(upload.userId, upload.id, upload.originalName, status, observations);
+
+    if (result.ok) {
+        toast({
+            title: `Archivo ${status.toLowerCase()}`,
+            description: `El archivo "${upload.originalName}" ha sido marcado como ${status.toLowerCase()}.`,
+        });
+        setIsOpen(false);
+        // Llamamos a onUpdateStatus para refrescar la UI si es necesario (aunque el listener ya lo hace)
+        await onUpdateStatus(upload, status, observations);
+    } else {
+        toast({
+            variant: "destructive",
+            title: "Error en la operación",
+            description: result.error,
+        });
+    }
   };
+
+  const fileNasUrl = `${NAS_PENDIENTES_PATH_FOR_LINK}${encodeURIComponent(upload.originalName)}`;
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -49,19 +73,28 @@ export function FileReviewDialog({ isOpen, setIsOpen, upload, onUpdateStatus }: 
         <DialogHeader>
           <DialogTitle className="font-headline text-2xl">Revisar Archivo y Generar Acta</DialogTitle>
           <DialogDescription>
-            {upload.originalName} - Subido por {upload.user?.firstName} {upload.user?.lastName}
+            {upload.originalName} - Subido por {upload.user?.nombres} {upload.user?.apellidos}
           </DialogDescription>
         </DialogHeader>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1 min-h-0">
             <div className="md:col-span-1 flex flex-col space-y-4">
                 <h3 className="font-semibold text-lg">Acciones de Revisión</h3>
                  <div className="space-y-1 text-sm">
-                    <p><strong className="font-medium">Usuario:</strong> {upload.user?.firstName} {upload.user?.lastName}</p>
+                    <p><strong className="font-medium">Usuario:</strong> {upload.user?.nombres} {upload.user?.apellidos}</p>
                     <p><strong className="font-medium">Departamento:</strong> {upload.user?.department}</p>
                     <p><strong className="font-medium">Fecha de subida:</strong> {upload.uploadDate}</p>
                     <p><strong className="font-medium">Uso:</strong> <span className="capitalize">{upload.usage}</span></p>
                 </div>
                  <Separator />
+                 
+                 {/* Enlace para abrir el archivo desde el NAS */}
+                 <Button asChild variant="secondary">
+                     <Link href={fileNasUrl} target="_blank" rel="noopener noreferrer">
+                         <ExternalLink className="mr-2 h-4 w-4" />
+                         Abrir Archivo Original desde NAS
+                     </Link>
+                 </Button>
+
                  <div className="space-y-2 flex-1 flex flex-col">
                     <Label htmlFor="observations" className="font-semibold">Observaciones</Label>
                     <Textarea 

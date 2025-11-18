@@ -72,8 +72,11 @@ export function DashboardAdmin({
 
     const ref = collection(firestore, "users");
     const unsub = onSnapshot(ref, (snap) => {
-      const data = snap.docs.map(d => ({ id: d.id, ...d.data(), })) as User[];
-      setUsers(data);
+      const data = snap.docs.map(d => ({
+        id: d.id,
+        ...d.data(),
+      })) as User[];
+      setUsers(data); 
     });
 
     return () => unsub();
@@ -82,26 +85,27 @@ export function DashboardAdmin({
   // UPLOADS Listener
   useEffect(() => {
     if (!firestore) return;
-
+  
     const ref = collectionGroup(firestore, "uploads");
-
+  
     const unsub = onSnapshot(ref, (snap) => {
-      const data = snap.docs.map(d => {
-        const raw = d.data();
+      const data = snap.docs.map((d) => {
+        const raw = d.data(); // ← AQUÍ se define raw correctamente
+  
         return {
           id: d.id,
           ...raw,
           uploadDate: formatDate(raw.uploadDate),
         };
       }) as Upload[];
+  
       setAllUploads(data);
       setLoading(false);
     });
-    
-
+  
     return () => unsub();
   }, [firestore]);
-
+  
   // Last 5 uploads
   useEffect(() => {
     if (!firestore) return;
