@@ -29,8 +29,9 @@ import { useState, useMemo, useEffect } from "react";
 import { FileReviewDialog } from "@/components/file-review-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { doc, collectionGroup, updateDoc } from "firebase/firestore";
+import { collectionGroup } from "firebase/firestore";
 import { statusConfig } from "@/lib/status-config";
+import { updateUploadStatus } from "@/app/actions/update-upload-status";
 
 type FilterValue = 'all' | 'PENDIENTE' | 'APROBADO' | 'RECHAZADO' | 'EN REVISION' | 'CORRECCIONES';
 
@@ -70,7 +71,6 @@ export function AdminFilesClientPage({ initialUploads, initialUsers }: AdminFile
     const currentUploads = rtUploads || initialUploads;
 
     // Helper to find a user by ID
-   
     const getUserById = (userId: string, users: User[]) => {
       return users.find(u => u.id === userId);
     };
@@ -80,16 +80,6 @@ export function AdminFilesClientPage({ initialUploads, initialUsers }: AdminFile
       ...upload,
       user: getUserById(upload.userId, initialUsers)
     }));    
-    
-    console.log("initialUsers:", initialUsers);
-console.log("currentUploads:", currentUploads);
-console.log("match check:", currentUploads.map(u => ({
-  uploadId: u.id,
-  userId: u.userId,
-  foundUser: initialUsers.find(x => x.id === u.userId)
-})));
-
-
 
     const handleReviewClick = (upload: UploadWithUser) => {
         setSelectedUpload(upload);
@@ -97,26 +87,24 @@ console.log("match check:", currentUploads.map(u => ({
     };
 
     const handleUpdateStatus = async (upload: UploadWithUser, status: UploadStatus, observations?: string) => {
-      if (!firestore) {
-        toast({ title: "Error", description: "Firestore not available.", variant: "destructive" });
-        return;
-      }
-      const uploadRef = doc(firestore, 'users', upload.userId, 'uploads', upload.id);
-      
-      const updateData: Partial<Upload> = { status };
-      if (observations) {
-        updateData.observations = observations;
-      }
-      if (status === 'APROBADO') {
-        updateData.acceptanceActPath = `/acts/${upload.id}.pdf`; // Dummy path
-      }
+        const result = await updateUploadStatus(upload.userId, upload.id, upload.originalName, status, observations);
 
-      await updateDoc(uploadRef, updateData);
-      
-      toast({
-        title: `Archivo ${status.toLowerCase()}`,
-        description: `El archivo "${upload.originalName}" ha sido marcado como ${status.toLowerCase()}.`,
-      });
+        if (result.ok) {
+            toast({
+                title: `Archivo ${status.toLowerCase()}`,
+                description: `El archivo "${upload.originalName}" ha sido marcado como ${status.toLowerCase()}.`,
+            });
+            // Cierra el diálogo si estaba abierto
+            if(isReviewDialogOpen) {
+                setReviewDialogOpen(false);
+            }
+        } else {
+            toast({
+                variant: "destructive",
+                title: "Error en la operación",
+                description: result.error,
+            });
+        }
     };
 
     const filteredUploads = useMemo(() => {

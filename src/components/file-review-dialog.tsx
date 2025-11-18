@@ -18,8 +18,6 @@ import { Check, Send, X, Printer, ExternalLink } from "lucide-react";
 import { useState, useRef } from "react";
 import { useReactToPrint } from "react-to-print";
 import { ActaPreview } from "./acta-preview";
-import { updateUploadStatus } from "@/app/actions/update-upload-status";
-import { toast } from "@/hooks/use-toast";
 import Link from "next/link";
 
 type UploadWithUser = Upload & { user?: User };
@@ -45,24 +43,8 @@ export function FileReviewDialog({ isOpen, setIsOpen, upload, onUpdateStatus }: 
   });
 
   const handleAction = async (status: UploadStatus) => {
-    // Usamos la Server Action directamente desde aquí para pasarle el originalName
-    const result = await updateUploadStatus(upload.userId, upload.id, upload.originalName, status, observations);
-
-    if (result.ok) {
-        toast({
-            title: `Archivo ${status.toLowerCase()}`,
-            description: `El archivo "${upload.originalName}" ha sido marcado como ${status.toLowerCase()}.`,
-        });
-        setIsOpen(false);
-        // Llamamos a onUpdateStatus para refrescar la UI si es necesario (aunque el listener ya lo hace)
-        await onUpdateStatus(upload, status, observations);
-    } else {
-        toast({
-            variant: "destructive",
-            title: "Error en la operación",
-            description: result.error,
-        });
-    }
+    // La lógica de actualización ahora está centralizada en la función onUpdateStatus que recibe de props
+    await onUpdateStatus(upload, status, observations);
   };
 
   const fileNasUrl = `${NAS_PENDIENTES_PATH_FOR_LINK}${encodeURIComponent(upload.originalName)}`;
