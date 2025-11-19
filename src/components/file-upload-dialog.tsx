@@ -117,6 +117,10 @@ export function FileUploadDialog({ currentUser }: FileUploadDialogProps) {
 
     const hasAssignedLocations = currentUser.assignedLocations && currentUser.assignedLocations.length > 0;
 
+    console.log("Assigned locations:", currentUser.assignedLocations);
+    console.log("Has assigned locations:", hasAssignedLocations);
+
+
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>

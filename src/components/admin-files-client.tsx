@@ -29,7 +29,7 @@ import { useState, useMemo, useEffect } from "react";
 import { FileReviewDialog } from "@/components/file-review-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collectionGroup } from "firebase/firestore";
+import { collection, collectionGroup } from "firebase/firestore";
 import { statusConfig } from "@/lib/status-config";
 import { updateUploadStatus } from "@/app/actions/update-upload-status";
 
@@ -63,12 +63,17 @@ export function AdminFilesClientPage({ initialUploads, initialUsers }: AdminFile
     const uploadsQuery = useMemoFirebase(() => firestore ? collectionGroup(firestore, "uploads") : null, [firestore]);
     const { data: rtUploads } = useCollection<Upload>(uploadsQuery);
 
+    // REAL-TIME UPDATES FOR USERS - This is the fix
+    const usersQuery = useMemoFirebase(() => firestore ? collection(firestore, "users") : null, [firestore]);
+    const { data: rtUsers } = useCollection<User>(usersQuery);
+
     const [isReviewDialogOpen, setReviewDialogOpen] = useState(false);
     const [selectedUpload, setSelectedUpload] = useState<UploadWithUser | undefined>(undefined);
     const [activeFilter, setActiveFilter] = useState<FilterValue>('all');
     
     // Use real-time data if available, otherwise fall back to initial server-fetched data
     const currentUploads = rtUploads || initialUploads;
+    const currentUsers = rtUsers || initialUsers;
 
     // Helper to find a user by ID
     const getUserById = (userId: string, users: User[]) => {
@@ -76,10 +81,12 @@ export function AdminFilesClientPage({ initialUploads, initialUsers }: AdminFile
     };
         
     // Enrich uploads with user data
-    const uploadsWithUsers = currentUploads.map(upload => ({
-      ...upload,
-      user: getUserById(upload.userId, initialUsers)
-    }));    
+    const uploadsWithUsers = useMemo(() => {
+      return currentUploads.map(upload => ({
+        ...upload,
+        user: getUserById(upload.userId, currentUsers)
+      }));
+    }, [currentUploads, currentUsers]);   
 
     const handleReviewClick = (upload: UploadWithUser) => {
         setSelectedUpload(upload);
@@ -156,6 +163,8 @@ export function AdminFilesClientPage({ initialUploads, initialUsers }: AdminFile
                   <TableBody>
                     {filteredUploads.length === 0 && <TableRow><TableCell colSpan={5} className="text-center py-10 text-muted-foreground">No hay archivos en esta categoría.</TableCell></TableRow>}
                     {filteredUploads.map((upload) => {
+                      // Do not render uploads if the user data hasn't loaded yet
+                      if (!upload.user) return null;
                       return (
                         <TableRow key={upload.id}>
                           <TableCell className="font-medium">

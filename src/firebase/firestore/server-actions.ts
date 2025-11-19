@@ -68,5 +68,6 @@ export async function getCurrentUser(): Promise<User | null> {
     rol: data.rol ?? "",
     email: data.email ?? "",
     isActive: data.isActive ?? false,
+    assignedLocations: data.assignedLocations || [], 
   };
 }
