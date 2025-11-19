@@ -26,7 +26,7 @@ import {
 import { PageHeader } from "@/components/page-header";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { UserAddDialog } from "@/components/user-add-dialog";
-import type { User } from "@/lib/types";
+import type { User, AssignedLocation } from "@/lib/types";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, doc, setDoc, updateDoc, deleteDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
@@ -63,7 +63,6 @@ export default function AdminUsersPage() {
     if (!selectedUserId || !users) return undefined;
     return users.find(u => u.id === selectedUserId);
   }, [selectedUserId, users]);
-
 
   const handleSaveUser = async (userData: Omit<User, 'id' | 'avatarUrl' | 'isActive'>, newUserId?: string) => {
     if (!firestore) {
@@ -102,6 +101,22 @@ export default function AdminUsersPage() {
         console.error("Error saving user to Firestore: ", error);
     }
   };
+
+    const handleUpdateLocations = async (userId: string, locations: AssignedLocation[]) => {
+        if (!firestore) {
+            toast({ title: "Error", description: "La base de datos no está disponible.", variant: "destructive" });
+            return;
+        }
+        try {
+            const userRef = doc(firestore, "users", userId);
+            await updateDoc(userRef, { assignedLocations: locations });
+            toast({ title: "Ubicaciones actualizadas", description: "Las ubicaciones del usuario han sido guardadas." });
+        } catch (error) {
+            console.error("Error updating locations:", error);
+            toast({ variant: "destructive", title: "Error", description: "No se pudieron guardar las ubicaciones." });
+        }
+    };
+
 
   const toggleUserStatus = async (user: User) => {
     if (!firestore) return;
@@ -179,6 +194,7 @@ export default function AdminUsersPage() {
             isOpen={isLocationDialogOpen}
             setIsOpen={handleCloseDialogs}
             user={selectedUserForDialog}
+            onUpdateLocations={handleUpdateLocations}
           />
       )}
 

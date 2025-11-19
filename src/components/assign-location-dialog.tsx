@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -15,8 +15,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import type { User, AssignedLocation } from "@/lib/types";
-import { useFirestore } from "@/firebase";
-import { doc, updateDoc } from "firebase/firestore";
 import { Badge } from "./ui/badge";
 import { X } from "lucide-react";
 
@@ -24,24 +22,18 @@ type AssignLocationDialogProps = {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
   user: User;
+  onUpdateLocations: (userId: string, locations: AssignedLocation[]) => Promise<void>;
 };
 
-export function AssignLocationDialog({ isOpen, setIsOpen, user }: AssignLocationDialogProps) {
+export function AssignLocationDialog({ isOpen, setIsOpen, user, onUpdateLocations }: AssignLocationDialogProps) {
     const { toast } = useToast();
-    const firestore = useFirestore();
     
-    const [locations, setLocations] = useState<AssignedLocation[]>([]);
+    // El estado local se deriva directamente de las props. No necesita su propio 'useEffect'.
+    const currentLocations = user.assignedLocations || [];
+    
     const [newShelf, setNewShelf] = useState("");
     const [newBox, setNewBox] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
-
-    useEffect(() => {
-        if (user?.assignedLocations) {
-            setLocations(user.assignedLocations);
-        } else {
-            setLocations([]);
-        }
-    }, [user]);
 
     const handleAddLocation = () => {
         if (!newShelf || !newBox) {
@@ -49,44 +41,40 @@ export function AssignLocationDialog({ isOpen, setIsOpen, user }: AssignLocation
             return;
         }
         const newLocation = { shelf: newShelf, box: newBox };
-        // Check for duplicates
-        if (locations.some(loc => loc.shelf === newShelf && loc.box === newBox)) {
+        
+        if (currentLocations.some(loc => loc.shelf === newShelf && loc.box === newBox)) {
             toast({ variant: "destructive", title: "Ubicación duplicada", description: "Esta estantería y caja ya han sido asignadas." });
             return;
         }
-        setLocations(prev => [...prev, newLocation]);
+        
+        const updatedLocations = [...currentLocations, newLocation];
+        onUpdateLocations(user.id, updatedLocations);
+        
         setNewShelf("");
         setNewBox("");
     };
 
     const handleRemoveLocation = (index: number) => {
-        setLocations(prev => prev.filter((_, i) => i !== index));
+        const updatedLocations = currentLocations.filter((_, i) => i !== index);
+        onUpdateLocations(user.id, updatedLocations);
     };
     
-    const handleSaveChanges = async () => {
-        if (!firestore) return;
-        setIsSubmitting(true);
-        try {
-            const userRef = doc(firestore, "users", user.id);
-            await updateDoc(userRef, { assignedLocations: locations });
-            toast({ title: "Ubicaciones actualizadas", description: `Se guardaron las nuevas ubicaciones para ${user.nombres}.` });
-            setIsOpen(false);
-        } catch (error) {
-            console.error("Error updating locations:", error);
-            toast({ variant: "destructive", title: "Error", description: "No se pudieron guardar los cambios." });
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
+    // El guardado se hace inmediatamente al añadir o quitar, ya no se necesita un botón de "Guardar Cambios" general.
+    // Opcionalmente, se puede mantener si se prefiere guardar en lote. Por ahora, lo eliminamos por simplicidad.
+    const handleClose = () => {
+      // Limpia los campos de texto al cerrar
+      setNewShelf("");
+      setNewBox("");
+      setIsOpen(false);
+    }
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Asignar Ubicaciones a {user.nombres}</DialogTitle>
           <DialogDescription>
-            Añade o elimina las estanterías y cajas disponibles para este usuario.
+            Añade o elimina las estanterías y cajas disponibles para este usuario. Los cambios se guardan automáticamente.
           </DialogDescription>
         </DialogHeader>
         
@@ -94,10 +82,10 @@ export function AssignLocationDialog({ isOpen, setIsOpen, user }: AssignLocation
             <div className="space-y-2">
                 <Label>Ubicaciones Asignadas</Label>
                 <div className="rounded-md border p-2 min-h-[60px] space-y-2">
-                    {locations.length === 0 ? (
+                    {currentLocations.length === 0 ? (
                         <p className="text-sm text-muted-foreground text-center py-2">No hay ubicaciones asignadas.</p>
                     ) : (
-                        locations.map((loc, index) => (
+                        currentLocations.map((loc, index) => (
                             <Badge key={index} variant="secondary" className="mr-2 p-2 justify-between w-full">
                                 <span>Estantería: <strong>{loc.shelf}</strong> / Caja: <strong>{loc.box}</strong></span>
                                 <button onClick={() => handleRemoveLocation(index)} className="ml-2 rounded-full hover:bg-muted-foreground/20 p-0.5">
@@ -123,10 +111,7 @@ export function AssignLocationDialog({ isOpen, setIsOpen, user }: AssignLocation
         </div>
 
         <DialogFooter>
-          <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>Cancelar</Button>
-          <Button onClick={handleSaveChanges} disabled={isSubmitting}>
-            {isSubmitting ? 'Guardando...' : 'Guardar Cambios'}
-          </Button>
+          <Button type="button" variant="ghost" onClick={handleClose}>Cerrar</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
