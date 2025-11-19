@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo } from "react";
@@ -38,25 +39,31 @@ export default function AdminUsersPage() {
   
   const [isUserDialogOpen, setUserDialogOpen] = useState(false);
   const [isLocationDialogOpen, setLocationDialogOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<User | undefined>(undefined);
+  const [selectedUserId, setSelectedUserId] = useState<string | undefined>(undefined);
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
 
   const handleOpenUserDialog = (user?: User) => {
-    setSelectedUser(user);
+    setSelectedUserId(user?.id);
     setUserDialogOpen(true);
   };
   
   const handleOpenLocationDialog = (user: User) => {
-    setSelectedUser(user);
+    setSelectedUserId(user.id);
     setLocationDialogOpen(true);
   };
 
   const handleCloseDialogs = () => {
-    setSelectedUser(undefined);
+    setSelectedUserId(undefined);
     setUserDialogOpen(false);
     setLocationDialogOpen(false);
   };
+  
+  const selectedUserForDialog = useMemo(() => {
+    if (!selectedUserId || !users) return undefined;
+    return users.find(u => u.id === selectedUserId);
+  }, [selectedUserId, users]);
+
 
   const handleSaveUser = async (userData: Omit<User, 'id' | 'avatarUrl' | 'isActive'>, newUserId?: string) => {
     if (!firestore) {
@@ -65,9 +72,9 @@ export default function AdminUsersPage() {
     }
     
     try {
-        if (selectedUser) {
+        if (selectedUserForDialog) {
             // Edit existing user
-            const userRef = doc(firestore, "users", selectedUser.id);
+            const userRef = doc(firestore, "users", selectedUserForDialog.id);
             await updateDoc(userRef, userData);
             toast({ title: "Usuario actualizado", description: `Los datos de ${userData.nombres} se han guardado.` });
 
@@ -106,7 +113,7 @@ export default function AdminUsersPage() {
   const promoteToAdmin = async (user: User) => {
     if (!firestore) return;
     const userRef = doc(firestore, "users", user.id);
-    await updateDoc(userRef, { role: 'admin' });
+    await updateDoc(userRef, { rol: 'admin' });
     // Also add to roles_admin collection for security rule check
     const adminRoleRef = doc(firestore, "roles_admin", user.id);
     await setDoc(adminRoleRef, { grantedAt: new Date() }, { merge: true });
@@ -116,7 +123,7 @@ export default function AdminUsersPage() {
   const demoteToUser = async (user: User) => {
     if (!firestore) return;
     const userRef = doc(firestore, "users", user.id);
-    await updateDoc(userRef, { role: 'user' });
+    await updateDoc(userRef, { rol: 'user' });
     const adminRoleRef = doc(firestore, "roles_admin", user.id);
     await deleteDoc(adminRoleRef);
     toast({ title: "Usuario degradado", description: `${user.nombres} ahora es un usuario estándar.` });
@@ -163,15 +170,15 @@ export default function AdminUsersPage() {
             isOpen={isUserDialogOpen} 
             setIsOpen={handleCloseDialogs}
             onSave={handleSaveUser}
-            user={selectedUser}
+            user={selectedUserForDialog}
           />
       )}
 
-      {selectedUser && isLocationDialogOpen && (
+      {selectedUserForDialog && isLocationDialogOpen && (
           <AssignLocationDialog
             isOpen={isLocationDialogOpen}
             setIsOpen={handleCloseDialogs}
-            user={selectedUser}
+            user={selectedUserForDialog}
           />
       )}
 
