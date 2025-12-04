@@ -18,7 +18,6 @@ type AdminHistoryClientPageProps = {
 }
 
 export function AdminHistoryClientPage({ initialUploads, initialUsers }: AdminHistoryClientPageProps) {
-    
     const users = initialUsers;
     const uploads = initialUploads;
 
