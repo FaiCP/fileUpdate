@@ -47,9 +47,27 @@ interface DashboardAdminProps {
 
 const formatDate = (dateValue: any): string => {
   if (!dateValue) return "";
-  if (typeof dateValue === 'string') return dateValue;
-  if (dateValue.toDate) return dateValue.toDate().toLocaleString(); // Firebase Timestamp
-  if (dateValue instanceof Date) return dateValue.toLocaleString();
+  // Handle string dates that might already be formatted
+  if (typeof dateValue === 'string') {
+    // Basic check if it's already in a user-friendly format, otherwise parse it
+    if (dateValue.includes('/') || dateValue.includes(':')) {
+        return dateValue;
+    }
+    const date = new Date(dateValue);
+    if (!isNaN(date.getTime())) {
+        return date.toLocaleString();
+    }
+    return dateValue; // return as is if parsing fails
+  }
+  // Handle Firebase Timestamp
+  if (dateValue && typeof dateValue.toDate === 'function') {
+    return dateValue.toDate().toLocaleString();
+  }
+  // Handle JavaScript Date object
+  if (dateValue instanceof Date) {
+    return dateValue.toLocaleString();
+  }
+  // Fallback for any other type
   return String(dateValue);
 };
 
@@ -64,7 +82,7 @@ export function DashboardAdmin({
   const [users, setUsers] = useState<User[]>(initialUsers);
   const [allUploads, setAllUploads] = useState<Upload[]>(initialUploads);
   const [recentUploads, setRecentUploads] = useState<Upload[]>([]);
-  const [loading, setLoading] = useState(initialUploads.length === 0);
+  const [loading, setLoading] = useState(true);
 
   // USERS Listener
   useEffect(() => {
@@ -77,7 +95,8 @@ export function DashboardAdmin({
         ...d.data(),
       })) as User[];
       setUsers(data); 
-    });
+      setLoading(false); // Stop loading once users are fetched
+    }, () => setLoading(false)); // Also stop loading on error
 
     return () => unsub();
   }, [firestore]);
@@ -90,7 +109,7 @@ export function DashboardAdmin({
   
     const unsub = onSnapshot(ref, (snap) => {
       const data = snap.docs.map((d) => {
-        const raw = d.data(); // ← AQUÍ se define raw correctamente
+        const raw = d.data();
   
         return {
           id: d.id,
@@ -100,7 +119,6 @@ export function DashboardAdmin({
       }) as Upload[];
   
       setAllUploads(data);
-      setLoading(false);
     });
   
     return () => unsub();

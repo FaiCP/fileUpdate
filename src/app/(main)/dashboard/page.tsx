@@ -1,12 +1,13 @@
+
+"use client";
+
 import { DashboardAdmin } from "@/components/dashboard-admin";
 import { DashboardUser } from "@/components/dashboard-user";
 import { PageHeader } from "@/components/page-header";
-import { getCurrentUser, getUsers, getUploads } from "@/firebase/firestore/server-actions";
+import { useCurrentUser } from "@/context/UserContext";
 
-export default async function DashboardPage() {
-  const currentUser = await getCurrentUser();
-  const users = await getUsers();
-  const uploads = await getUploads();
+export default function DashboardPage() {
+  const currentUser = useCurrentUser();
 
   if (!currentUser) {
     return (
@@ -15,7 +16,9 @@ export default async function DashboardPage() {
           title="Dashboard"
           description="Cargando información del usuario..."
         />
-        <div>Cargando dashboard...</div>
+        <div className="flex items-center justify-center py-20">
+            <div>Cargando dashboard...</div>
+        </div>
       </div>
     );
   }
@@ -31,10 +34,8 @@ export default async function DashboardPage() {
 
       {isAdmin 
         ? (
-            <DashboardAdmin 
-              initialUsers={users}
-              initialUploads={uploads}
-            />
+            // DashboardAdmin already fetches its own real-time data
+            <DashboardAdmin />
           ) 
         : (
             <DashboardUser 
