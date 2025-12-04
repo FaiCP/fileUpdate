@@ -18,42 +18,38 @@ type AdminHistoryClientPageProps = {
 }
 
 export function AdminHistoryClientPage({ initialUploads, initialUsers }: AdminHistoryClientPageProps) {
-    const users = initialUsers;
-    const uploads = initialUploads;
-
-    const totalUploads = uploads?.length || 0;
-    const totalUsers = users?.length || 0;
-
+    
     const uploadsByDepartment = useMemo(() => {
-        if (!users || !uploads) return [];
+        if (!initialUsers || !initialUploads) return [];
         const counts: { [key: string]: number } = {};
-        uploads.forEach(upload => {
-            const user = getUserById(upload.userId, users);
+        initialUploads.forEach(upload => {
+            const user = getUserById(upload.userId, initialUsers);
             if (user && user.department) {
                 counts[user.department] = (counts[user.department] || 0) + 1;
             }
         });
         return Object.entries(counts).map(([name, total]) => ({ name, total }));
-    }, [users, uploads]);
+    }, [initialUsers, initialUploads]);
 
     const uploadsByType = useMemo(() => {
-        if (!uploads) return [];
+        if (!initialUploads) return [];
         const counts: { [key: string]: number } = {};
-        uploads.forEach(upload => {
+        initialUploads.forEach(upload => {
             counts[upload.fileType] = (counts[upload.fileType] || 0) + 1;
         });
         return Object.entries(counts).map(([name, value]) => ({ name, value, fill: COLORS[Math.floor(Math.random() * COLORS.length)] }));
-    }, [uploads]);
+    }, [initialUploads]);
 
     const uploadsWithUsers = useMemo(() => {
-        if (!users || !uploads) return [];
-        return uploads.map(upload => ({
+        if (!initialUsers || !initialUploads) return [];
+        return initialUploads.map(upload => ({
             ...upload,
-            user: getUserById(upload.userId, users)
+            user: getUserById(upload.userId, initialUsers)
         }));
-        // Data is already sorted by date from the server query
-    }, [users, uploads]);
+    }, [initialUsers, initialUploads]);
 
+    const totalUploads = initialUploads.length;
+    const totalUsers = initialUsers.length;
 
   return (
     <div className="container mx-auto px-0 space-y-6">
