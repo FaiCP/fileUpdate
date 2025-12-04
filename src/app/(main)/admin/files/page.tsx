@@ -1,26 +1,14 @@
-import { firestore } from "@/firebase/server"; 
-import type { Upload, User } from "@/lib/types";
+"use client";
+
 import { AdminFilesClientPage } from "@/components/admin-files-client";
 
-// SERVER: Usa Admin SDK
-async function getAdminPageData() {
-  const usersSnapshot = await firestore.collection("users").get();
-  const uploadsSnapshot = await firestore.collectionGroup("uploads").get();
+// This page has been converted to a full Client Component page
+// to avoid server-side authentication issues in production environments.
+// The AdminFilesClientPage component is already set up to fetch
+// all necessary data in real-time on the client.
 
-  const allUsers: User[] = usersSnapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data(),
-  }) as User);
-
-  const allUploads: Upload[] = uploadsSnapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data(),
-  }) as Upload);
-
-  return { allUsers, allUploads };
-}
-
-export default async function AdminFilesPage() {
-  const { allUsers, allUploads } = await getAdminPageData();
-  return <AdminFilesClientPage initialUploads={allUploads} initialUsers={allUsers} />;
+export default function AdminFilesPage() {
+  // The initialUploads and initialUsers props are now removed.
+  // The client component will handle all data fetching.
+  return <AdminFilesClientPage initialUploads={[]} initialUsers={[]} />;
 }
