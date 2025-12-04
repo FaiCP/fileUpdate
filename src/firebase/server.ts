@@ -2,27 +2,40 @@ import { initializeApp, getApps, getApp, cert, type App } from "firebase-admin/a
 import { getFirestore, type Firestore } from "firebase-admin/firestore";
 import { firebaseConfig } from "./config";
 
-const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY
-  ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY)
-  : undefined;
+let firebaseApp: App | undefined;
+let firestore: Firestore | undefined;
 
-let firebaseApp: App;
-let firestore: Firestore;
+try {
+  const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY
+    ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY)
+    : undefined;
 
-if (!getApps().length) {
-  if (serviceAccount) {
-    firebaseApp = initializeApp({
-      credential: cert(serviceAccount),
-      databaseURL: `https://${firebaseConfig.projectId}.firebaseio.com`,
-    });
+  if (getApps().length === 0) {
+    if (serviceAccount) {
+      firebaseApp = initializeApp({
+        credential: cert(serviceAccount),
+        databaseURL: `https://${firebaseConfig.projectId}.firebaseio.com`,
+      });
+    } else {
+      console.warn(
+        "Firebase Admin SDK: FIREBASE_SERVICE_ACCOUNT_KEY environment variable not set. Admin features will be disabled. This is normal for client-side development but will cause errors in production server-side rendering."
+      );
+      // Fallback for environments like Google Cloud Run with default credentials
+      firebaseApp = initializeApp({ projectId: firebaseConfig.projectId });
+    }
   } else {
-    console.warn("FIREBASE_SERVICE_ACCOUNT_KEY not set, fallback to projectId.");
-    firebaseApp = initializeApp({ projectId: firebaseConfig.projectId });
+    firebaseApp = getApp();
   }
-} else {
-  firebaseApp = getApp();
+
+  if (firebaseApp) {
+    firestore = getFirestore(firebaseApp);
+  }
+
+} catch (error) {
+  console.error("Firebase Admin SDK initialization failed:", error);
+  // Ensure firestore remains undefined if initialization fails
+  firestore = undefined;
 }
 
-firestore = getFirestore(firebaseApp);
 
 export { firestore, firebaseApp };

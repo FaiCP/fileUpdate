@@ -13,8 +13,19 @@ async function moveFileOnNAS(fileName: string) {
   await fs.rename(from, to);
 }
 
+// Helper function to check if admin SDK is available
+const isAdminSdkAvailable = () => {
+  if (!firestore) {
+    console.error("Firestore Admin SDK is not available. Server actions requiring admin privileges will fail.");
+    return false;
+  }
+  return true;
+}
+
 // ✔ Obtener todos los usuarios
 export async function getUsers(): Promise<User[]> {
+  if (!isAdminSdkAvailable()) return [];
+
   const snap = await firestore.collection("users").get();
 
   return snap.docs.map(doc => {
@@ -35,6 +46,8 @@ export async function getUsers(): Promise<User[]> {
 
 // ✔ Obtener uploads
 export async function getUploads(): Promise<Upload[]> {
+  if (!isAdminSdkAvailable()) return [];
+
   const snap = await firestore.collectionGroup("uploads").get();
 
   return snap.docs.map(doc => ({
@@ -49,10 +62,9 @@ export async function getCurrentUser(): Promise<User | null> {
   const userId = cookieStore.get("userId")?.value;
   console.log("🍪 userId cookie:", userId);
   
-
-  
   if (!userId) return null;
-
+  if (!isAdminSdkAvailable()) return null; // Prevent crash if SDK is not initialized
+  
   const docSnap = await firestore.collection("users").doc(userId).get();
   console.log("📄 Firestore exists:", docSnap.exists);
   if (!docSnap.exists) return null;
