@@ -3,7 +3,7 @@ import { firestore } from "@/firebase/server";
 import { AdminHistoryClientPage } from "@/components/admin-history-client";
 import type { Upload, User } from "@/lib/types";
 
-// SERVER: Usa Admin SDK para obtener los datos con privilegios
+// SERVER: Use Admin SDK to securely fetch all data with privileges
 async function getAdminHistoryData() {
   const usersSnapshot = await firestore.collection("users").get();
   const uploadsSnapshot = await firestore.collectionGroup("uploads").orderBy('uploadDate', 'desc').get();
@@ -23,10 +23,10 @@ async function getAdminHistoryData() {
 
 
 export default async function AdminHistoryPage() {
-  // Obtenemos los datos en el servidor
+  // Fetch initial data on the server
   const { allUsers, allUploads } = await getAdminHistoryData();
 
-  // Pasamos los datos al componente de cliente para que los renderice
+  // Pass the server-fetched data to the client component for rendering
   return (
     <AdminHistoryClientPage 
         initialUploads={allUploads} 
