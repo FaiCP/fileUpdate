@@ -1,4 +1,3 @@
-
 "use client";
 
 import { PageHeader } from "@/components/page-header";
@@ -6,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Bar, BarChart, CartesianGrid, XAxis, Pie, PieChart, Cell } from "recharts";
-import { Upload, FileText, Users } from "lucide-react";
+import { Upload, Users } from "lucide-react";
 import { useMemo } from "react";
 import type { Upload as UploadType, User as UserType } from "@/lib/types";
 import { getUserById } from "@/lib/data";
@@ -19,7 +18,7 @@ type AdminHistoryClientPageProps = {
 }
 
 export function AdminHistoryClientPage({ initialUploads, initialUsers }: AdminHistoryClientPageProps) {
-
+    
     const users = initialUsers;
     const uploads = initialUploads;
 
