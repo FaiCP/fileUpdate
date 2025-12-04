@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useMemo } from "react";
@@ -237,7 +238,7 @@ export default function AdminUsersPage() {
                   </TableCell>
                   <TableCell className="hidden md:table-cell">{user.department}</TableCell>
                   <TableCell className="hidden sm:table-cell capitalize">{user.rol}</TableCell>
-                  <TableCell className="hidden sm:table-cell">
+                  <TableCell className="hidden sm-table-cell">
                     <Badge variant={user.isActive ? "default" : "destructive"} className={user.isActive ? "bg-green-600" : ""}>
                       {user.isActive ? "Activo" : "Inactivo"}
                     </Badge>
