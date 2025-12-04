@@ -7,10 +7,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Bar, BarChart, CartesianGrid, XAxis, Pie, PieChart, Cell } from "recharts";
 import { Upload, FileText, Users } from "lucide-react";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo } from "react";
 import type { Upload as UploadType, User as UserType } from "@/lib/types";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, collectionGroup, query, orderBy } from "firebase/firestore";
 import { getUserById } from "@/lib/data";
 
 const COLORS = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))"];
@@ -21,17 +19,9 @@ type AdminHistoryClientPageProps = {
 }
 
 export function AdminHistoryClientPage({ initialUploads, initialUsers }: AdminHistoryClientPageProps) {
-    const firestore = useFirestore();
 
-    // Listen to real-time updates and merge with initial data
-    const usersQuery = useMemoFirebase(() => firestore ? collection(firestore, 'users') : null, [firestore]);
-    const { data: rtUsers } = useCollection<UserType>(usersQuery);
-
-    const uploadsQuery = useMemoFirebase(() => firestore ? query(collectionGroup(firestore, 'uploads'), orderBy('uploadDate', 'desc')) : null, [firestore]);
-    const { data: rtUploads } = useCollection<UploadType>(uploadsQuery);
-
-    const users = rtUsers ?? initialUsers;
-    const uploads = rtUploads ?? initialUploads;
+    const users = initialUsers;
+    const uploads = initialUploads;
 
     const totalUploads = uploads?.length || 0;
     const totalUsers = users?.length || 0;
@@ -117,7 +107,7 @@ export function AdminHistoryClientPage({ initialUploads, initialUsers }: AdminHi
             <CardHeader>
                 <CardTitle>Distribución por Tipo de Archivo</CardTitle>
                 <CardDescription>Formatos de archivo más comunes.</CardDescription>
-            </CardHeader>
+            </Header>
             <CardContent>
                 <ChartContainer config={{}} className="min-h-[200px] w-full">
                     <PieChart>

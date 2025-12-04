@@ -25,11 +25,9 @@ import type { Upload, UploadStatus, User } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { FileReviewDialog } from "@/components/file-review-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, collectionGroup } from "firebase/firestore";
 import { statusConfig } from "@/lib/status-config";
 import { updateUploadStatus } from "@/app/actions/update-upload-status";
 
@@ -57,36 +55,28 @@ type AdminFilesClientPageProps = {
 
 export function AdminFilesClientPage({ initialUploads, initialUsers }: AdminFilesClientPageProps) {
     const { toast } = useToast();
-    const firestore = useFirestore();
     
-    // Real-time updates for uploads
-    const uploadsQuery = useMemoFirebase(() => firestore ? collectionGroup(firestore, "uploads") : null, [firestore]);
-    const { data: rtUploads } = useCollection<Upload>(uploadsQuery);
-
-    // REAL-TIME UPDATES FOR USERS - This is the fix
-    const usersQuery = useMemoFirebase(() => firestore ? collection(firestore, "users") : null, [firestore]);
-    const { data: rtUsers } = useCollection<User>(usersQuery);
+    // State to hold and manage uploads and users, starting with server-fetched data.
+    // This will allow us to update the UI after an action without a full page reload.
+    const [uploads, setUploads] = useState<Upload[]>(initialUploads);
+    const [users] = useState<User[]>(initialUsers);
 
     const [isReviewDialogOpen, setReviewDialogOpen] = useState(false);
     const [selectedUpload, setSelectedUpload] = useState<UploadWithUser | undefined>(undefined);
     const [activeFilter, setActiveFilter] = useState<FilterValue>('all');
     
-    // Use real-time data if available, otherwise fall back to initial server-fetched data
-    const currentUploads = rtUploads || initialUploads;
-    const currentUsers = rtUsers || initialUsers;
-
     // Helper to find a user by ID
-    const getUserById = (userId: string, users: User[]) => {
+    const getUserById = (userId: string) => {
       return users.find(u => u.id === userId);
     };
         
     // Enrich uploads with user data
     const uploadsWithUsers = useMemo(() => {
-      return currentUploads.map(upload => ({
+      return uploads.map(upload => ({
         ...upload,
-        user: getUserById(upload.userId, currentUsers)
+        user: getUserById(upload.userId)
       }));
-    }, [currentUploads, currentUsers]);   
+    }, [uploads, users]);
 
     const handleReviewClick = (upload: UploadWithUser) => {
         setSelectedUpload(upload);
@@ -97,6 +87,12 @@ export function AdminFilesClientPage({ initialUploads, initialUsers }: AdminFile
         const result = await updateUploadStatus(upload.userId, upload.id, upload.originalName, status, observations);
 
         if (result.ok) {
+            // Update the local state to reflect the change immediately
+            setUploads(currentUploads => 
+                currentUploads.map(u => 
+                    u.id === upload.id ? { ...u, status, observations: observations || u.observations } : u
+                )
+            );
             toast({
                 title: `Archivo ${status.toLowerCase()}`,
                 description: `El archivo "${upload.originalName}" ha sido marcado como ${status.toLowerCase()}.`,
