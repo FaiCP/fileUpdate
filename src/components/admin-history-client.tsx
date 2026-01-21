@@ -85,7 +85,7 @@ export function AdminHistoryClientPage({ initialUploads, initialUsers }: AdminHi
             <CardHeader>
                 <CardTitle>Archivos por Departamento</CardTitle>
                 <CardDescription>Volumen de archivos subidos desde cada departamento.</CardDescription>
-            </CardHeader>
+            </Header>
             <CardContent>
                  <ChartContainer config={{}} className="min-h-[200px] w-full">
                     <BarChart accessibilityLayer data={uploadsByDepartment}>
