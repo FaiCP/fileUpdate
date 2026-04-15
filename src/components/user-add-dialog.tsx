@@ -18,6 +18,7 @@ import type { User } from "@/lib/types";
 import { initializeApp, deleteApp } from "firebase/app";
 import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
 import { firebaseConfig } from "@/firebase/config";
+import { getAuthUserByEmail } from "@/app/actions/get-auth-user-by-email";
 
 
 type UserData = Omit<User, 'id' | 'avatarUrl' | 'isActive' | 'assignedLocations'>;
@@ -94,14 +95,26 @@ export function UserAddDialog({ isOpen, setIsOpen, onSave, user }: UserAddDialog
                 const tempApp = initializeApp(firebaseConfig, tempAppName);
                 const tempAuth = getAuth(tempApp);
 
+                let newUserId: string;
                 try {
                     const userCredential = await createUserWithEmailAndPassword(tempAuth, formData.email, password);
-                    const newUserId = userCredential.user.uid;
-                    await onSave(formData as UserData, newUserId);
+                    newUserId = userCredential.user.uid;
+                } catch (authError: any) {
+                    if (authError.code === 'auth/email-already-in-use') {
+                        // El email ya existe en Auth (quizás de un intento anterior).
+                        // Recuperamos el UID para crear solo el documento Firestore.
+                        const existing = await getAuthUserByEmail(formData.email);
+                        if (!existing) {
+                            throw new Error("El correo ya está en uso y no se pudo recuperar el usuario.");
+                        }
+                        newUserId = existing.uid;
+                    } else {
+                        throw authError;
+                    }
                 } finally {
-                    // Clean up the temporary app instance
                     await deleteApp(tempApp);
                 }
+                await onSave(formData as UserData, newUserId);
 
             } else {
                 throw new Error("El email es requerido para crear un usuario.");
@@ -113,11 +126,13 @@ export function UserAddDialog({ isOpen, setIsOpen, onSave, user }: UserAddDialog
             });
             setIsOpen(false);
         } catch(error: any) {
-            console.error("Error saving user:", error);
-             toast({
+            console.warn("UserAddDialog error:", error.code ?? error.message);
+            toast({
                 variant: "destructive",
                 title: "Error al guardar",
-                description: error.code === 'auth/email-already-in-use' ? 'Este correo electrónico ya está en uso.' : (error.message || "No se pudo crear o actualizar el usuario."),
+                description: error.code === 'auth/email-already-in-use'
+                    ? 'Este correo ya está registrado.'
+                    : (error.message || "No se pudo crear o actualizar el usuario."),
             });
         } finally {
             setIsSubmitting(false);

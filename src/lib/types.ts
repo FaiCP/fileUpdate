@@ -32,6 +32,7 @@ export type Upload = {
   status: UploadStatus; // Renamed from estado
   observations?: string; // Renamed from observaciones
   acceptanceActPath?: string; // Renamed from acta_pdf_path
+  reviewedAt?: string;
   shelf: string;
   box: string;
 };

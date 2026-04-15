@@ -1,4 +1,3 @@
-
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -6,7 +5,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -14,11 +12,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import type { Upload, UploadStatus, User } from "@/lib/types";
-import { Check, Send, X, Printer, ExternalLink } from "lucide-react";
+import { Check, Send, X, Printer, Download, FileX } from "lucide-react";
 import { useState, useRef } from "react";
 import { useReactToPrint } from "react-to-print";
-import { ActaPreview } from "./acta-preview";
-import Link from "next/link";
+import { ApprovalCertificate } from "./approval-certificate";
 
 type UploadWithUser = Upload & { user?: User };
 
@@ -29,89 +26,136 @@ type FileReviewDialogProps = {
   onUpdateStatus: (upload: UploadWithUser, status: UploadStatus, observations?: string) => Promise<void>;
 };
 
-// Asumimos que los archivos pendientes están en esta ruta
-const NAS_PENDIENTES_PATH_FOR_LINK = "file:////10.0.16.103/tics/Pruebas/pendientes/";
-
 export function FileReviewDialog({ isOpen, setIsOpen, upload, onUpdateStatus }: FileReviewDialogProps) {
   const [observations, setObservations] = useState(upload.observations || "");
-  const actaRef = useRef<HTMLDivElement>(null);
+  const [locallyApproved, setLocallyApproved] = useState(upload.status === "APROBADO");
+  const certRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = useReactToPrint({
-    content: () => actaRef.current,
+    content: () => certRef.current,
     documentTitle: `acta-${upload.id}-${upload.user?.nombres}`,
-    onAfterPrint: () => console.log("printed"),
   });
 
   const handleAction = async (status: UploadStatus) => {
-    // La lógica de actualización ahora está centralizada en la función onUpdateStatus que recibe de props
+    if (status === "APROBADO") setLocallyApproved(true);
     await onUpdateStatus(upload, status, observations);
   };
 
-  const fileNasUrl = `${NAS_PENDIENTES_PATH_FOR_LINK}${encodeURIComponent(upload.originalName)}`;
+  const canPrint = locallyApproved || upload.status === "APROBADO";
+  const isPdf = upload.fileType === "pdf";
+  const previewUrl = `/api/nas-file?filename=${encodeURIComponent(upload.originalName)}`;
+  const downloadUrl = previewUrl;
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="max-w-6xl h-[95vh] flex flex-col">
+      <DialogContent className="max-w-7xl h-[95vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle className="font-headline text-2xl">Revisar Archivo y Generar Acta</DialogTitle>
+          <DialogTitle className="font-headline text-2xl">Revisión de Archivo</DialogTitle>
           <DialogDescription>
-            {upload.originalName} - Subido por {upload.user?.nombres} {upload.user?.apellidos}
+            {upload.originalName} — Subido por {upload.user?.nombres} {upload.user?.apellidos}
           </DialogDescription>
         </DialogHeader>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1 min-h-0">
-            <div className="md:col-span-1 flex flex-col space-y-4">
-                <h3 className="font-semibold text-lg">Acciones de Revisión</h3>
-                 <div className="space-y-1 text-sm">
-                    <p><strong className="font-medium">Usuario:</strong> {upload.user?.nombres} {upload.user?.apellidos}</p>
-                    <p><strong className="font-medium">Departamento:</strong> {upload.user?.department}</p>
-                    <p><strong className="font-medium">Fecha de subida:</strong> {upload.uploadDate}</p>
-                    <p><strong className="font-medium">Uso:</strong> <span className="capitalize">{upload.usage}</span></p>
-                </div>
-                 <Separator />
-                 
-                 {/* Enlace para abrir el archivo desde el NAS */}
-                 <Button asChild variant="secondary">
-                     <Link href={fileNasUrl} target="_blank" rel="noopener noreferrer">
-                         <ExternalLink className="mr-2 h-4 w-4" />
-                         Abrir Archivo Original desde NAS
-                     </Link>
-                 </Button>
 
-                 <div className="space-y-2 flex-1 flex flex-col">
-                    <Label htmlFor="observations" className="font-semibold">Observaciones</Label>
-                    <Textarea 
-                        id="observations" 
-                        placeholder="Añadir comentarios para el usuario... (visibles si se solicitan correcciones)" 
-                        className="flex-1"
-                        value={observations}
-                        onChange={(e) => setObservations(e.target.value)}
-                    />
-                 </div>
-                 <div className="flex flex-col gap-2">
-                    <Button onClick={() => handleAction("CORRECCIONES")} variant="outline">
-                        <Send className="mr-2 h-4 w-4" /> Solicitar Correcciones
-                    </Button>
-                    <Button onClick={() => handleAction("RECHAZADO")} variant="destructive">
-                        <X className="mr-2 h-4 w-4" /> Rechazar Archivo
-                    </Button>
-                 </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 flex-1 min-h-0">
+
+          {/* ── Left panel: actions ── */}
+          <div className="md:col-span-1 flex flex-col space-y-4 overflow-y-auto pr-1">
+            <h3 className="font-semibold text-lg">Acciones de Revisión</h3>
+
+            <div className="space-y-1 text-sm">
+              <p><strong className="font-medium">Usuario:</strong> {upload.user?.nombres} {upload.user?.apellidos}</p>
+              <p><strong className="font-medium">Departamento:</strong> {upload.user?.department}</p>
+              <p><strong className="font-medium">Fecha de subida:</strong> {upload.uploadDate}</p>
+              <p><strong className="font-medium">Uso:</strong> <span className="capitalize">{upload.usage}</span></p>
+              <p>
+                <strong className="font-medium">Estantería:</strong> {upload.shelf || "—"}
+                &nbsp;<strong className="font-medium">Caja:</strong> {upload.box || "—"}
+              </p>
             </div>
-            <div className="md:col-span-1 flex flex-col space-y-4">
-                 <div className="flex justify-between items-center">
-                    <h3 className="font-semibold text-lg">Vista Previa del Acta</h3>
-                    <Button onClick={handlePrint} variant="outline" size="sm" disabled={upload.status !== 'APROBADO'}>
-                        <Printer className="mr-2 h-4 w-4" /> Imprimir / Guardar PDF
-                    </Button>
-                 </div>
-                <div className="border rounded-lg flex-1 overflow-auto p-4 bg-white">
-                     <ActaPreview ref={actaRef} upload={upload} user={upload.user}/>
+
+            <Separator />
+
+            <div className="space-y-2 flex-1 flex flex-col">
+              <Label htmlFor="observations" className="font-semibold">
+                Observaciones / Notas
+              </Label>
+              <Textarea
+                id="observations"
+                placeholder="Añadir comentarios o notas de revisión para el usuario..."
+                className="flex-1 min-h-[120px]"
+                value={observations}
+                onChange={(e) => setObservations(e.target.value)}
+              />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Button
+                onClick={() => handleAction("APROBADO")}
+                className="w-full bg-green-600 hover:bg-green-700"
+                disabled={canPrint && upload.status === "APROBADO"}
+              >
+                <Check className="mr-2 h-4 w-4" />
+                {upload.status === "APROBADO" ? "Ya Aprobado" : "Aprobar Archivo"}
+              </Button>
+
+              <Button onClick={() => handleAction("CORRECCIONES")} variant="outline">
+                <Send className="mr-2 h-4 w-4" /> Solicitar Correcciones
+              </Button>
+
+              <Button onClick={() => handleAction("RECHAZADO")} variant="destructive">
+                <X className="mr-2 h-4 w-4" /> Rechazar Archivo
+              </Button>
+
+              <Separator />
+
+              <Button onClick={handlePrint} variant="secondary" disabled={!canPrint}>
+                <Printer className="mr-2 h-4 w-4" />
+                {canPrint ? "Imprimir / Guardar Acta PDF" : "Aprobar para imprimir acta"}
+              </Button>
+            </div>
+          </div>
+
+          {/* ── Right panel: document preview ── */}
+          <div className="md:col-span-2 flex flex-col min-h-0">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-semibold text-lg">Documento Original</h3>
+              <Button asChild variant="outline" size="sm">
+                <a href={downloadUrl} download={upload.originalName}>
+                  <Download className="mr-2 h-4 w-4" />
+                  Descargar
+                </a>
+              </Button>
+            </div>
+
+            <div className="border rounded-lg flex-1 min-h-0 overflow-hidden bg-muted/30">
+              {isPdf ? (
+                <iframe
+                  src={previewUrl}
+                  className="w-full h-full"
+                  title={upload.originalName}
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground p-8">
+                  <FileX className="h-16 w-16 opacity-40" />
+                  <p className="text-center text-sm">
+                    La vista previa no está disponible para archivos de tipo{" "}
+                    <strong>{upload.fileType}</strong>.
+                  </p>
+                  <Button asChild variant="outline">
+                    <a href={downloadUrl} download={upload.originalName}>
+                      <Download className="mr-2 h-4 w-4" />
+                      Descargar archivo para revisar
+                    </a>
+                  </Button>
                 </div>
-                 <DialogFooter>
-                    <Button onClick={() => handleAction("APROBADO")} className="w-full bg-green-600 hover:bg-green-700">
-                        <Check className="mr-2 h-4 w-4" /> Aprobar y Habilitar Impresión de Acta
-                    </Button>
-                 </DialogFooter>
+              )}
             </div>
+          </div>
+        </div>
+
+        {/* Hidden certificate for printing — never visible on screen */}
+        <div className="hidden">
+          <ApprovalCertificate ref={certRef} upload={upload} user={upload.user} />
         </div>
       </DialogContent>
     </Dialog>

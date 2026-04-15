@@ -104,26 +104,27 @@ export function DashboardAdmin({
   // UPLOADS Listener
   useEffect(() => {
     if (!firestore) return;
-  
+
     const ref = collectionGroup(firestore, "uploads");
-  
+
     const unsub = onSnapshot(ref, (snap) => {
       const data = snap.docs.map((d) => {
         const raw = d.data();
-  
         return {
           id: d.id,
           ...raw,
           uploadDate: formatDate(raw.uploadDate),
         };
       }) as Upload[];
-  
       setAllUploads(data);
+    }, (err) => {
+      console.warn("Dashboard: no se pudo cargar el listado de uploads:", err.code);
+      setLoading(false);
     });
-  
+
     return () => unsub();
   }, [firestore]);
-  
+
   // Last 5 uploads
   useEffect(() => {
     if (!firestore) return;
@@ -143,10 +144,10 @@ export function DashboardAdmin({
           uploadDate: formatDate(raw.uploadDate),
         };
       }) as Upload[];
-    
       setRecentUploads(data);
+    }, (err) => {
+      console.warn("Dashboard: no se pudo cargar uploads recientes:", err.code);
     });
-    
 
     return () => unsub();
   }, [firestore]);

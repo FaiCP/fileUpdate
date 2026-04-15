@@ -3,7 +3,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { MoreHorizontal, PlusCircle, Search, UserCog, Package } from "lucide-react";
+import { MoreHorizontal, PlusCircle, Search, UserCog, Package, UserCheck, UserX, KeyRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -32,6 +32,7 @@ import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, doc, setDoc, updateDoc, deleteDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { AssignLocationDialog } from "@/components/assign-location-dialog";
+import { ChangePasswordDialog } from "@/components/change-password-dialog";
 
 export default function AdminUsersPage() {
   const firestore = useFirestore();
@@ -40,6 +41,7 @@ export default function AdminUsersPage() {
   
   const [isUserDialogOpen, setUserDialogOpen] = useState(false);
   const [isLocationDialogOpen, setLocationDialogOpen] = useState(false);
+  const [isPasswordDialogOpen, setPasswordDialogOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | undefined>(undefined);
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
@@ -58,6 +60,12 @@ export default function AdminUsersPage() {
     setSelectedUserId(undefined);
     setUserDialogOpen(false);
     setLocationDialogOpen(false);
+    setPasswordDialogOpen(false);
+  };
+
+  const handleOpenPasswordDialog = (user: User) => {
+    setSelectedUserId(user.id);
+    setPasswordDialogOpen(true);
   };
   
   const selectedUserForDialog = useMemo(() => {
@@ -199,6 +207,16 @@ export default function AdminUsersPage() {
           />
       )}
 
+      {selectedUserForDialog && isPasswordDialogOpen && (
+          <ChangePasswordDialog
+            mode="admin"
+            isOpen={isPasswordDialogOpen}
+            setIsOpen={handleCloseDialogs}
+            targetUserId={selectedUserForDialog.id}
+            targetUserName={`${selectedUserForDialog.nombres} ${selectedUserForDialog.apellidos}`}
+          />
+      )}
+
       <Card>
         <CardContent className="pt-6">
           <Table>
@@ -238,7 +256,7 @@ export default function AdminUsersPage() {
                   </TableCell>
                   <TableCell className="hidden md:table-cell">{user.department}</TableCell>
                   <TableCell className="hidden sm:table-cell capitalize">{user.rol}</TableCell>
-                  <TableCell className="hidden sm-table-cell">
+                  <TableCell className="hidden sm:table-cell">
                     <Badge variant={user.isActive ? "default" : "destructive"} className={user.isActive ? "bg-green-600" : ""}>
                       {user.isActive ? "Activo" : "Inactivo"}
                     </Badge>
@@ -258,8 +276,14 @@ export default function AdminUsersPage() {
                             <Package className="mr-2 h-4 w-4" />
                             Asignar Ubicaciones
                         </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleOpenPasswordDialog(user)}>
+                            <KeyRound className="mr-2 h-4 w-4" />
+                            Cambiar Contraseña
+                        </DropdownMenuItem>
                         <DropdownMenuItem className={user.isActive ? "text-destructive" : ""} onClick={() => toggleUserStatus(user)}>
-                          {user.isActive ? "Desactivar" : "Activar"}
+                          {user.isActive
+                            ? <><UserX className="mr-2 h-4 w-4" /> Desactivar Usuario</>
+                            : <><UserCheck className="mr-2 h-4 w-4" /> Activar Usuario</>}
                         </DropdownMenuItem>
                          <DropdownMenuSeparator />
                         {user.rol === 'admin' ? (

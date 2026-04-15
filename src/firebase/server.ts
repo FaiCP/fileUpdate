@@ -1,14 +1,30 @@
 import { initializeApp, getApps, getApp, cert, type App } from "firebase-admin/app";
 import { getFirestore, type Firestore } from "firebase-admin/firestore";
 import { firebaseConfig } from "./config";
+import fs from "fs";
+import path from "path";
 
 let firebaseApp: App;
 let firestore: Firestore;
 
 if (!getApps().length) {
-  const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY
-    ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY)
-    : undefined;
+  // ── Estrategia 1: archivo service-account.json en la raíz del proyecto ──
+  // Este es el método más confiable en desarrollo local porque evita problemas
+  // de codificación al pegar el JSON en variables de entorno.
+  const keyFilePath = path.join(process.cwd(), "service-account.json");
+
+  let serviceAccount: any = null;
+
+  if (fs.existsSync(keyFilePath)) {
+    serviceAccount = JSON.parse(fs.readFileSync(keyFilePath, "utf8"));
+  } else if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+    // ── Estrategia 2: variable de entorno (producción / CI) ──
+    // El replace convierte los \\n literales que genera .env en saltos de línea reales.
+    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+    if (serviceAccount?.private_key) {
+      serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, "\n");
+    }
+  }
 
   if (serviceAccount) {
     firebaseApp = initializeApp({
@@ -17,9 +33,9 @@ if (!getApps().length) {
     });
   } else {
     console.warn(
-      "Firebase Admin SDK: Service account not found. Using default credentials. This is expected for local development but may fail in production if not configured properly."
+      "Firebase Admin SDK: No se encontró service-account.json ni FIREBASE_SERVICE_ACCOUNT_KEY. " +
+      "Usando credenciales por defecto (solo funciona en Google Cloud)."
     );
-    // Fallback for environments like Google Cloud Run with default credentials
     firebaseApp = initializeApp({
       projectId: firebaseConfig.projectId,
     });
@@ -29,6 +45,5 @@ if (!getApps().length) {
 }
 
 firestore = getFirestore(firebaseApp);
-
 
 export { firestore, firebaseApp };

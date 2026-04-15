@@ -78,6 +78,17 @@ export function FileUploadDialog({ currentUser }: FileUploadDialogProps) {
         try {
             for (let i = 0; i < files.length; i++) {
                 const file = files[i];
+
+                // 1. Subir el archivo físico al NAS (carpeta pendientes)
+                const nasForm = new FormData();
+                nasForm.append("file", file);
+                const nasRes = await fetch("/api/nas-file", { method: "POST", body: nasForm });
+                if (!nasRes.ok) {
+                    const nasErr = await nasRes.json().catch(() => ({}));
+                    throw new Error(nasErr.error || "No se pudo guardar el archivo en el servidor.");
+                }
+
+                // 2. Registrar el documento en Firestore
                 const fileType = getFileTypeFromExtension(file.name);
                 const newUploadData: Omit<Upload, 'id'> = {
                     userId: currentUser.id,
@@ -91,8 +102,6 @@ export function FileUploadDialog({ currentUser }: FileUploadDialogProps) {
                     box: box.trim(),
                 };
 
-                // In a real app, you would also upload the file to Firebase Storage
-                // and get a download URL. Here we just create the Firestore document.
                 const uploadsCollectionRef = collection(firestore, 'users', currentUser.id, 'uploads');
                 await addDoc(uploadsCollectionRef, newUploadData);
             }

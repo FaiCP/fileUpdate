@@ -97,8 +97,8 @@ export function AdminFilesClientPage({ initialUploads, initialUsers }: AdminFile
                 title: `Archivo ${status.toLowerCase()}`,
                 description: `El archivo "${upload.originalName}" ha sido marcado como ${status.toLowerCase()}.`,
             });
-            // Cierra el diálogo si estaba abierto
-            if(isReviewDialogOpen) {
+            // Cierra el diálogo solo si NO fue aprobado (para que el admin pueda imprimir el acta)
+            if(isReviewDialogOpen && status !== 'APROBADO') {
                 setReviewDialogOpen(false);
             }
         } else {

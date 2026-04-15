@@ -2,12 +2,13 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from 'next/navigation';
-import { useUser, useFirestore } from "@/firebase";
+import { useUser, useFirestore, useAuth } from "@/firebase";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { SidebarNav } from "@/components/sidebar-nav";
 import { UserNav } from "@/components/user-nav";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { doc, getDoc } from "firebase/firestore";
+import { signOut } from "firebase/auth";
 import type { User } from "@/lib/types";
 import { UserContext } from "@/context/UserContext";
 
@@ -18,6 +19,7 @@ export default function MainLayout({
 }>) {
   const { user: authUser, isUserLoading: isAuthLoading } = useUser();
   const firestore = useFirestore();
+  const auth = useAuth();
   const router = useRouter();
 
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -46,6 +48,15 @@ export default function MainLayout({
           if (userDocSnap.exists()) {
             // IMPORTANT: The ID from the document snapshot must be added to the data.
             const userData = { id: userDocSnap.id, ...userDocSnap.data() } as User;
+
+            // Bloqueo de usuarios inactivos
+            if (userData.isActive === false) {
+              await signOut(auth);
+              await fetch('/api/session', { method: 'DELETE', credentials: 'include' });
+              router.replace('/?error=account_disabled');
+              return;
+            }
+
             setCurrentUser(userData);
             setLayoutState('authenticated');
           } else {

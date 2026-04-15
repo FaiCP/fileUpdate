@@ -6,7 +6,7 @@ import type { Upload, User } from "@/lib/types";
 // SERVER: Use Admin SDK to securely fetch all data with privileges
 async function getAdminHistoryData() {
   const usersSnapshot = await firestore.collection("users").get();
-  const uploadsSnapshot = await firestore.collectionGroup("uploads").orderBy('uploadDate', 'desc').get();
+  const uploadsSnapshot = await firestore.collectionGroup("uploads").get();
 
   const allUsers: User[] = usersSnapshot.docs.map(doc => ({
     id: doc.id,

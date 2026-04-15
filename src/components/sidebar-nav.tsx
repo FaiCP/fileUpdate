@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FileArchive, FileText, History, LayoutDashboard, Settings, Upload, Users } from "lucide-react";
+import { BarChart2, FileArchive, FileText, History, LayoutDashboard, Settings, Upload, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Sidebar,
@@ -26,6 +26,7 @@ const adminNavItems = [
   { href: "/admin/files", icon: FileText, label: "Revisión de Actas" },
   { href: "/admin/users", icon: Users, label: "Gestión de Usuarios" },
   { href: "/admin/history", icon: History, label: "Historial Global" },
+  { href: "/admin/reports", icon: BarChart2, label: "Reportes" },
 ];
 
 export function SidebarNav() {

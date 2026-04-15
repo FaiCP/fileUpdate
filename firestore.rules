@@ -70,6 +70,16 @@ service cloud.firestore {
     }
 
     /**
+     * @description Permite collectionGroup queries sobre "uploads" para admins.
+     * Sin esta regla, las consultas collectionGroup("uploads") son denegadas aunque
+     * el path específico /users/{userId}/uploads/{uploadId} sí tenga permiso.
+     * @path /{path=**}/uploads/{uploadId}
+     */
+    match /{path=**}/uploads/{uploadId} {
+      allow read: if isAdmin();
+    }
+
+    /**
      * @description Restricts access to audit logs to administrators only.
      * @path /audit_logs/{auditLogId}
      * @allow (get, list, create, update, delete) - Only admins can access/modify audit logs.

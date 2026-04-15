@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { FileArchive, LogIn, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,6 +17,8 @@ import { Info } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isAccountDisabled = searchParams.get('error') === 'account_disabled';
   const { toast } = useToast();
   const auth = useAuth();
   const firestore = useFirestore();
@@ -202,6 +204,15 @@ export default function LoginPage() {
                 </div>
             ) : (
                 <>
+                {isAccountDisabled && (
+                    <Alert className="mb-4 border-destructive text-destructive">
+                        <Info className="h-4 w-4 !text-destructive" />
+                        <AlertTitle>Cuenta desactivada</AlertTitle>
+                        <AlertDescription>
+                            Tu cuenta ha sido desactivada. Contacta al administrador del sistema.
+                        </AlertDescription>
+                    </Alert>
+                )}
                 {seedSuccess && (
                      <Alert className="mb-4 border-green-500 text-green-700">
                         <Info className="h-4 w-4 !text-green-700" />

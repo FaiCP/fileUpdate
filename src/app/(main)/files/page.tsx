@@ -1,11 +1,12 @@
 "use client"
 
-import { Download, FileText, ListFilter } from "lucide-react";
-import Link from "next/link";
+import React, { useState, useMemo } from "react";
+import { FileText, ListFilter, FileCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import type { Upload, UploadStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/page-header";
@@ -16,11 +17,23 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
-import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query, where } from "firebase/firestore";
+} from "@/components/ui/dropdown-menu";
+import { useFirestore, useCollection, useMemoFirebase, useUser } from "@/firebase";
+import { useCurrentUser } from "@/context/UserContext";
+import { collection } from "firebase/firestore";
 import { statusConfig } from "@/lib/status-config";
+import { UserCertificateDialog } from "@/components/user-certificate-dialog";
+import { AlertCircle } from "lucide-react";
+
+const ALL_STATUSES: UploadStatus[] = ['PENDIENTE', 'EN REVISION', 'CORRECCIONES', 'APROBADO', 'RECHAZADO'];
+
+const statusLabels: Record<UploadStatus, string> = {
+  PENDIENTE: 'Pendiente',
+  'EN REVISION': 'En Revisión',
+  CORRECCIONES: 'Correcciones',
+  APROBADO: 'Aprobado',
+  RECHAZADO: 'Rechazado',
+};
 
 const StatusBadge = ({ status }: { status: UploadStatus }) => {
   const config = statusConfig[status];
@@ -34,20 +47,31 @@ const StatusBadge = ({ status }: { status: UploadStatus }) => {
   );
 };
 
-
 export default function UserFilesPage() {
-  const { user: currentUser } = useUser();
+  const { user: authUser } = useUser();
+  const currentUser = useCurrentUser();
   const firestore = useFirestore();
-  
+
+  const [activeStatuses, setActiveStatuses] = useState<UploadStatus[]>([...ALL_STATUSES]);
+  const [certificateUpload, setCertificateUpload] = useState<Upload | null>(null);
 
   const userUploadsQuery = useMemoFirebase(() => {
-    if (!firestore || !currentUser?.uid) return null;
-    return collection(firestore, 'users', currentUser.uid, 'uploads');
-  }, [currentUser, firestore]);
+    if (!firestore || !authUser?.uid) return null;
+    return collection(firestore, 'users', authUser.uid, 'uploads');
+  }, [authUser, firestore]);
 
   const { data: userUploads, isLoading } = useCollection<Upload>(userUploadsQuery);
 
-  const dummyPdfUrl = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf";
+  const filteredUploads = useMemo(() => {
+    if (!userUploads) return [];
+    return userUploads.filter(u => activeStatuses.includes(u.status));
+  }, [userUploads, activeStatuses]);
+
+  const toggleStatus = (status: UploadStatus) => {
+    setActiveStatuses(prev =>
+      prev.includes(status) ? prev.filter(s => s !== status) : [...prev, status]
+    );
+  };
 
   if (isLoading || !currentUser) return <div>Cargando...</div>;
 
@@ -58,24 +82,26 @@ export default function UserFilesPage() {
         description="Aquí puedes ver todos los archivos que has subido y su estado."
       >
         <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-8 gap-1">
-                <ListFilter className="h-3.5 w-3.5" />
-                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                  Filtrar
-                </span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Filtrar por estado</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuCheckboxItem checked>
-                Aprobado
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="h-8 gap-1">
+              <ListFilter className="h-3.5 w-3.5" />
+              <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Filtrar</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Filtrar por estado</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {ALL_STATUSES.map(status => (
+              <DropdownMenuCheckboxItem
+                key={status}
+                checked={activeStatuses.includes(status)}
+                onCheckedChange={() => toggleStatus(status)}
+              >
+                {statusLabels[status]}
               </DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem>Pendiente</DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem>Rechazado</DropdownMenuCheckboxItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </PageHeader>
 
       <Card>
@@ -91,55 +117,82 @@ export default function UserFilesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading && <TableRow><TableCell colSpan={5}>Cargando archivos...</TableCell></TableRow>}
-              {!isLoading && userUploads && userUploads.map((upload) => (
-                <TableRow key={upload.id}>
-                  <TableCell className="font-medium">
-                    <div className="flex items-center gap-3">
-                      <FileText className="h-6 w-6 text-muted-foreground flex-shrink-0" />
-                      <div className="flex flex-col">
-                        <span className="font-semibold">{upload.originalName}</span>
-                        <div className="sm:hidden text-xs text-muted-foreground">{upload.usage} - <StatusBadge status={upload.status} /></div>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="hidden sm:table-cell capitalize">{upload.usage}</TableCell>
-                  <TableCell className="hidden sm:table-cell">
-                    <StatusBadge status={upload.status} />
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">{upload.uploadDate}</TableCell>
-                  <TableCell className="text-right">
-                    {upload.status === 'APROBADO' && upload.acceptanceActPath && (
-                      <Link href={dummyPdfUrl} target="_blank" rel="noopener noreferrer">
-                        <Button variant="outline" size="sm">
-                          <Download className="mr-2 h-4 w-4" />
-                          Descargar Acta
-                        </Button>
-                      </Link>
-                    )}
+              {isLoading && (
+                <TableRow>
+                  <TableCell colSpan={5}>Cargando archivos...</TableCell>
+                </TableRow>
+              )}
+              {!isLoading && filteredUploads.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center text-muted-foreground py-10">
+                    No hay archivos en esta categoría.
                   </TableCell>
                 </TableRow>
+              )}
+              {!isLoading && filteredUploads.map((upload) => (
+                <React.Fragment key={upload.id}>
+                  <TableRow>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-3">
+                        <FileText className="h-6 w-6 text-muted-foreground flex-shrink-0" />
+                        <div className="flex flex-col">
+                          <span className="font-semibold">{upload.originalName}</span>
+                          <div className="sm:hidden text-xs text-muted-foreground">
+                            {upload.usage} — <StatusBadge status={upload.status} />
+                          </div>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell capitalize">{upload.usage}</TableCell>
+                    <TableCell className="hidden sm:table-cell">
+                      <StatusBadge status={upload.status} />
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">{upload.uploadDate}</TableCell>
+                    <TableCell className="text-right">
+                      {upload.status === 'APROBADO' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCertificateUpload(upload)}
+                        >
+                          <FileCheck className="mr-2 h-4 w-4" />
+                          Ver Acta
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+
+                  {/* Observations alert for CORRECCIONES / RECHAZADO */}
+                  {(upload.status === 'CORRECCIONES' || upload.status === 'RECHAZADO') && upload.observations && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="py-2 px-4 bg-destructive/5">
+                        <Alert variant="destructive" className="py-2">
+                          <AlertCircle className="h-4 w-4" />
+                          <AlertTitle className="text-sm font-semibold">
+                            Observaciones del administrador
+                          </AlertTitle>
+                          <AlertDescription className="text-sm">
+                            {upload.observations}
+                          </AlertDescription>
+                        </Alert>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </React.Fragment>
               ))}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
-      <Pagination className="mt-6">
-        <PaginationContent>
-            <PaginationItem>
-                <PaginationPrevious href="#" />
-            </PaginationItem>
-            <PaginationItem>
-                <PaginationLink href="#">1</PaginationLink>
-            </PaginationItem>
-            <PaginationItem>
-                <PaginationLink href="#" isActive>2</PaginationLink>
-            </PaginationItem>
-            <PaginationItem>
-                <PaginationNext href="#" />
-            </PaginationItem>
-        </PaginationContent>
-      </Pagination>
+
+      {certificateUpload && currentUser && (
+        <UserCertificateDialog
+          isOpen={!!certificateUpload}
+          setIsOpen={(open) => { if (!open) setCertificateUpload(null); }}
+          upload={certificateUpload}
+          user={currentUser}
+        />
+      )}
     </div>
   );
 }
