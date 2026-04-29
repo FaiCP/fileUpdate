@@ -63,7 +63,8 @@ export async function POST(req: NextRequest) {
     // Prevent path traversal — only allow the basename
     const safeName = path.basename(file.name);
 
-    await fsp.mkdir(NAS_PENDIENTES, { recursive: true });
+    // mkdir fails on UNC paths on Windows (errno -4094); skip it — NAS folder must pre-exist
+    try { await fsp.mkdir(NAS_PENDIENTES, { recursive: true }); } catch { /* ignore */ }
 
     const destPath = path.join(NAS_PENDIENTES, safeName);
     const buffer = Buffer.from(await file.arrayBuffer());
