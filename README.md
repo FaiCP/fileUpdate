@@ -1,5 +1,20 @@
 <!-- AUTOREADME:START -->
-# nextn
+<p align="center">
+  <h1>▲ nextn</h1>
+</p>
+
+<p align="center">
+  <a href="https://github.com/FaiCP/fileUpdate/stargazers"><img src="https://img.shields.io/github/stars/FaiCP/fileUpdate?style=flat&color=yellow" alt="Stars" /></a>
+  <a href="https://github.com/FaiCP/fileUpdate/commits"><img src="https://img.shields.io/github/last-commit/FaiCP/fileUpdate?style=flat" alt="Last Commit" /></a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Node.js-339933?logo=node.js&logoColor=white" alt="Node.js" />
+  <img src="https://img.shields.io/badge/React-61DAFB?logo=react&logoColor=white" alt="React" />
+  <img src="https://img.shields.io/badge/Next.js-000000?logo=next.js&logoColor=white" alt="Next.js" />
+  <img src="https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/Tailwind%20CSS-06B6D4?logo=tailwindcss&logoColor=white" alt="Tailwind CSS" />
+</p>
 
 ## Tech Stack
 
